@@ -1,6 +1,7 @@
 import streamlit as st
 from ui.remote_config_page import show_remote_config_page
 from ui.report_config_page import show_report_config_page
+from ui.pnl_page import show_pnl_page
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
@@ -40,6 +41,7 @@ with tab3:
     st.write("Trend content goes here.")
 
 with tab4:
-    st.write("PNL content goes here.")
+    show_pnl_page()
+
 
 
