@@ -3,7 +3,7 @@ import pandas as pd
 import math
 from pathlib import Path
 from database.postgre import PostgreDatabase
-from ui.utils import highlight_rows
+from ui.ui_utils import highlight_rows
 from utils.data_utils import (get_report_by_symbol, get_main_stock_data,
                         get_doanh_thu_loi_nhuan, save_report,
                         update_price_config, get_forigener_trading_trend,

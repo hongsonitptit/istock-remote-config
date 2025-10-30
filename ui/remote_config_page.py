@@ -3,7 +3,7 @@ from utils.redis_utils import set_remote_config
 from datetime import datetime
 from utils.redis_utils import get_all_remote_config
 import pandas as pd
-from ui.utils import highlight_rows
+from ui.ui_utils import highlight_rows
 
 original_data = get_all_remote_config()
 

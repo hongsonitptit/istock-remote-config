@@ -116,16 +116,8 @@ def update_price_config(symbol, high, low, rsi, trend):
     db_conn.crud_query(update_sql)
     print(f"Price config updated for {symbol} - high: {high}, low: {low}")
 
-def get_forigener_trading_trend(symbol: str):
-    trading_sql = f"""
-    select foreigner from price_config
-    where symbol = '{symbol.upper()}'
-    """
-    result = db_conn.raw_query(trading_sql)
-    if not result:
-        return []
-    foreigner_data_str = result[0].get('foreigner', "")
 
+def convert_forigener_trading_data(foreigner_data_str: str):
     # Parse the string data
     if not foreigner_data_str:
         return []
@@ -145,6 +137,24 @@ def get_forigener_trading_trend(symbol: str):
         parsed_data.append(value)
     parsed_data.reverse()
     return parsed_data
+
+
+def get_forigener_trading_trend(symbol: str):
+    trading_sql = f"""
+    select foreigner from price_config
+    where symbol = '{symbol.upper()}'
+    """
+    result = db_conn.raw_query(trading_sql)
+    if not result:
+        return []
+    foreigner_data_str = result[0].get('foreigner', "")
+
+    # Parse the string data
+    if not foreigner_data_str:
+        return []
+
+    return convert_forigener_trading_data(foreigner_data_str)
+
 
 def get_company_estimations(symbol: str):
     estimation_sql = f"""
