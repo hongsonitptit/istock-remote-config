@@ -32,8 +32,6 @@ def show_table(symbol):
     # st.write(df.to_html(escape=False), unsafe_allow_html=True)
     pass
 
-def show_bank_table(symbol):
-    pass
 
 def show_pnl_page():
     symbol = st.text_input("Filter company ...", "FPT")

@@ -3,6 +3,7 @@ from utils.redis_utils import set_remote_config
 from datetime import datetime
 from utils.redis_utils import get_all_remote_config
 import pandas as pd
+from ui.utils import highlight_rows
 
 original_data = get_all_remote_config()
 
@@ -42,7 +43,7 @@ def show_remote_config_page():
     if st.button("Update"):
         show_update_remove_config_dialog(selected_key)
 
-    st.dataframe(df,
+    st.dataframe(df.style.apply(highlight_rows, axis=1),
                     # Set max height to 800px to prevent excessively tall tables
                 height=min(35 * len(df) + 35, 800))
     
