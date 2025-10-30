@@ -43,6 +43,10 @@ def show_remote_config_page():
     if st.button("Update"):
         show_update_remove_config_dialog(selected_key)
 
+    for col in df.columns:
+            # Dùng apply(str) để xử lý mọi loại giá trị (kể cả NaN/None, "") thành chuỗi.
+            df[col] = df[col].apply(str)
+
     st.dataframe(df.style.apply(highlight_rows, axis=1),
                     # Set max height to 800px to prevent excessively tall tables
                 height=min(35 * len(df) + 35, 800))

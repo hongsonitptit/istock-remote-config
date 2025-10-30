@@ -46,7 +46,7 @@ def display_report_table(symbol):
         '###### Báo cáo dự phóng'
         with col_report_1:
             filter_date_report = st.text_input(
-                label="", placeholder="Lọc theo ngày báo cáo ...", 
+                label="xxx", placeholder="Lọc theo ngày báo cáo ...", 
                 key="filter_date_report", label_visibility='hidden')
         with col_report_2:
             # if st.button("Xóa bộ lọc"):
@@ -70,6 +70,7 @@ def display_report_table(symbol):
         df_display = df.copy()
         # Format the 'doanh_thu' column with thousands separator
         df_display['id'] = df['id'].apply(lambda x: "{:,}".format(int(x)))
+        # df_display['id'] = df_display['id'].astype(str)
         df_display['doanh_thu'] = df['doanh_thu'].apply(
             lambda x: "{:,}".format(int(x)))
         df_display['gia_muc_tieu'] = df['gia_muc_tieu'].apply(
@@ -87,11 +88,13 @@ def display_report_table(symbol):
                      "{:,}".format(loi_nhuan_sau_thue_mean),
                      ""]
         footer = pd.DataFrame([mean_data], columns=df_display.columns)
-        # Ensure the footer has the same data types as the main dataframe
-        footer['report_date'] = footer['report_date'].astype(str)
-        # print(footer)
         # Changed ignore_index to True
         report_table = pd.concat([df_display, footer], ignore_index=True)
+        for col in report_table.columns:
+            # Dùng apply(str) để xử lý mọi loại giá trị (kể cả NaN/None, "") thành chuỗi.
+            report_table[col] = report_table[col].apply(str)
+
+        # print(report_table.columns)
         # print(report_table)
 
         # display the table with the footer
