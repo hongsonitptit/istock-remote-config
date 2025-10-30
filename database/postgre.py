@@ -4,7 +4,7 @@ from sqlalchemy.engine import ResultProxy
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from sqlalchemy.ext.declarative import declarative_base
-from postgre_engine_factory import PostgreEngineFactory, NEON_ENGINE, NHOST_ENGINE, COCK_ENGINE
+from database.postgre_engine_factory import PostgreEngineFactory, NEON_ENGINE, NHOST_ENGINE, COCK_ENGINE
 
 Base = declarative_base()
 

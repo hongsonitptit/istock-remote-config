@@ -1,7 +1,7 @@
 import streamlit as st
-from redis_utils import set_remote_config
+from utils.redis_utils import set_remote_config
 from datetime import datetime
-from redis_utils import get_all_remote_config
+from utils.redis_utils import get_all_remote_config
 import pandas as pd
 
 original_data = get_all_remote_config()

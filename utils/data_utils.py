@@ -1,4 +1,4 @@
-from postgre import PostgreDatabase
+from database.postgre import PostgreDatabase
 
 db_conn = PostgreDatabase()
 

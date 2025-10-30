@@ -2,13 +2,13 @@ import streamlit as st
 import pandas as pd
 import math
 from pathlib import Path
-from postgre import PostgreDatabase
-from data_utils import (get_report_by_symbol, get_main_stock_data,
+from database.postgre import PostgreDatabase
+from utils.data_utils import (get_report_by_symbol, get_main_stock_data,
                         get_doanh_thu_loi_nhuan, save_report,
                         update_price_config, get_forigener_trading_trend,
                         format_currency_short, get_company_estimations)
 import altair as alt
-from redis_utils import REPORT_LINK_BLACKLIST_KEY, set_hexpired, set_hset
+from utils.redis_utils import REPORT_LINK_BLACKLIST_KEY, set_hexpired, set_hset
 from datetime import datetime
 
 
@@ -38,7 +38,7 @@ def display_report_table(symbol):
     reports_data = get_report_by_symbol(symbol)
     # print(reports_data)
     if reports_data:
-        col_report_1, col_report_2 = st.columns(2)
+        col_report_1, col_report_2 = st.columns([1,3])
         col_report_2 = col_report_2.container(
             horizontal_alignment="right"
         )
@@ -48,8 +48,9 @@ def display_report_table(symbol):
                 label="", placeholder="Lọc theo ngày báo cáo ...", 
                 key="filter_date_report", label_visibility='hidden')
         with col_report_2:
-            if st.button("Xóa bộ lọc"):
-                show_dialog_to_add_link_to_blacklist()
+            # if st.button("Xóa bộ lọc"):
+            #     show_dialog_to_add_link_to_blacklist()
+            pass
             # '###### Dữ liệu báo cáo 2'
         df = pd.DataFrame(reports_data)
 
@@ -350,7 +351,7 @@ def display_forigener_trading_trend_chart(foreigner_trading):
 
 
 def display_dividend_payment_history_table(symbol):
-    from api_utils import get_dividend_payment_histories
+    from utils.api_utils import get_dividend_payment_histories
     dividend_data = get_dividend_payment_histories(symbol, page=0, size=10)
     if dividend_data:
         df = pd.DataFrame(dividend_data)

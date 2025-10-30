@@ -1,6 +1,6 @@
 import streamlit as st
-from remote_config_page import show_remote_config_page
-from report_config_page import show_report_config_page
+from ui.remote_config_page import show_remote_config_page
+from ui.report_config_page import show_report_config_page
 
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
