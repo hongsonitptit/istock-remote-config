@@ -2,6 +2,7 @@ from database.postgre import PostgreDatabase
 
 db_conn = PostgreDatabase()
 
+
 def format_currency_short(value):
     if abs(value) >= 1_000_000_000:
         return f"{value / 1_000_000_000:.1f}B"
@@ -11,6 +12,7 @@ def format_currency_short(value):
         return f"{value / 1_000:.1f}K"
     else:
         return f"{value:.0f}"
+
 
 def get_report_by_symbol(symbol: str):
     report_sql = f"""
@@ -28,7 +30,9 @@ def get_report_by_symbol(symbol: str):
     reports = db_conn.raw_query(report_sql)
     return reports
 
+
 get_report_by_symbol('FPT')
+
 
 def get_main_stock_data(symbol: str):
     data = dict()
@@ -57,20 +61,21 @@ def get_main_stock_data(symbol: str):
     data['low'] = 0.0
     data['gap'] = 0.0
     data['trend'] = 'N/A'
-    queries = [price_rsi_sql, 
+    queries = [price_rsi_sql,
                rsi_sql,
-               price_config_sql, 
+               price_config_sql,
                gia_von_sql]
     for query in queries:
         result = db_conn.raw_query(query)
         if result:
             data.update(result[0])
         # print(result)
-    
+
     # Example output structure: {'price': 88100, 'rsi_14': 32.5, 'high': 120.0, 'low': 90.0, 'gap': 36.20885357548242, 'total': 5055, 'cost_price': 108560.8}
     return data
 
-def get_doanh_thu_loi_nhuan(symbol: str):
+
+def get_doanh_thu_loi_nhuan_quy(symbol: str):
     doanh_thu_sql = f"""
     select 
     "doanh_thu_Q1" as "Q1",
@@ -96,8 +101,46 @@ def get_doanh_thu_loi_nhuan(symbol: str):
         if result:
             data.append(list(result[0].values()))
         else:
-            data.append([0,0,0,0,0])
+            data.append([0, 0, 0, 0, 0])
     return data
+
+
+def parse_doanh_thu_loi_nhuan(data_str: str) -> list:
+    result = []
+    data = data_str.split('<br>')
+    for item in data:
+        if ": " in item:
+            value = int(item.split(": ")[1])
+            result.append(value)
+    return result
+
+
+def get_doanh_thu_loi_nhuan_nam(symbol: str):
+    query_1 = f"""
+    SELECT symbol, doanh_thu_nam, ln_sau_thue_nam FROM company where symbol = '{symbol.upper()}'
+    """
+    result = db_conn.raw_query(query_1)
+    data = []
+    doanh_thu_nam_str = result[0]['doanh_thu_nam']
+    lnst_nam_str = result[0]['ln_sau_thue_nam']
+    doanh_thu_nam = parse_doanh_thu_loi_nhuan(doanh_thu_nam_str)
+    lnst_nam = parse_doanh_thu_loi_nhuan(lnst_nam_str)
+    query_2 = f"""
+    select 
+    ("doanh_thu_Q1" + "doanh_thu_Q2" + "doanh_thu_Q3" + "doanh_thu_Q4") as "DOANH THU",
+    ("lnst_Q1" + "lnst_Q2" + "lnst_Q3" + "lnst_Q4") as "LNST"
+    from financial_statement where symbol = '{symbol.upper()}'
+    """
+    result = db_conn.raw_query(query_2)
+    doanh_thu_nam.append(result[0]['DOANH THU'])
+    lnst_nam.append(result[0]['LNST'])
+    data.append(doanh_thu_nam)
+    data.append(lnst_nam)
+    return data
+
+
+get_doanh_thu_loi_nhuan_nam("FPT")
+
 
 def save_report(symbol, source, report_date, gia_muc_tieu, doanh_thu, loi_nhuan_sau_thue, link):
     insert_sql = f"""
@@ -106,6 +149,7 @@ def save_report(symbol, source, report_date, gia_muc_tieu, doanh_thu, loi_nhuan_
     """
     db_conn.crud_query(insert_sql)
     print(f"Report saved for {symbol} - {source} - {report_date}")
+
 
 def update_price_config(symbol, high, low, rsi, trend):
     update_sql = f"""
@@ -123,8 +167,9 @@ def convert_forigener_trading_data(foreigner_data_str: str):
         return []
 
     # Remove parentheses and split by comma
-    cleaned_data = foreigner_data_str.replace('(', '').replace(')', '').split(', ')
-    
+    cleaned_data = foreigner_data_str.replace(
+        '(', '').replace(')', '').split(', ')
+
     parsed_data = []
     for item in cleaned_data:
         item = item.strip()

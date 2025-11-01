@@ -5,7 +5,8 @@ from pathlib import Path
 from database.postgre import PostgreDatabase
 from ui.ui_utils import highlight_rows
 from utils.data_utils import (get_report_by_symbol, get_main_stock_data,
-                        get_doanh_thu_loi_nhuan, save_report,
+                        get_doanh_thu_loi_nhuan_quy, save_report,
+                        get_doanh_thu_loi_nhuan_nam,
                         update_price_config, get_forigener_trading_trend,
                         format_currency_short, get_company_estimations)
 import altair as alt
@@ -281,8 +282,8 @@ def display_main_stock_data(main_data):
     pass
 
 
-def display_lnst_doanhthu_chart(symbol):
-    data = get_doanh_thu_loi_nhuan(symbol)
+def display_lnst_doanhthu_quy_chart(symbol):
+    data = get_doanh_thu_loi_nhuan_quy(symbol)
     chart_data = pd.DataFrame(
         {
             "Danh mục": ["Q1", "Q2", "Q3", "Q4", "Total"],
@@ -302,7 +303,53 @@ def display_lnst_doanhthu_chart(symbol):
         tooltip=["Danh mục", "Loại giá trị", "Giá trị"]
     ).properties(
         title='Doanh thu và Lợi nhuận sau thuế theo quý',
-        height=300
+        height=250
+    )
+
+    text = bars.mark_text(
+        align='center',
+        baseline='bottom',
+        fontSize=15  # Increased font size
+    ).encode(
+        x=alt.X("Danh mục:N", axis=alt.Axis(title="Danh mục", labelAngle=0)),
+        xOffset="Loại giá trị:N",
+        y=alt.Y("Giá trị:Q"),
+        text=alt.Text("Giá trị:Q", format=",.0f"),
+        color=alt.value('black')
+    )
+
+    st.altair_chart(bars + text, use_container_width=True)
+    pass
+
+
+def display_lnst_doanh_thu_nam_chart(symbol):
+    data = get_doanh_thu_loi_nhuan_nam(symbol)
+    current_year = datetime.today().year
+    columns = []
+    for index in range(len(data[0])):
+        year = current_year - index
+        columns.append(year)
+    columns.reverse()
+    chart_data = pd.DataFrame(
+        {
+            "Danh mục": columns,
+            "Doanh thu": data[0],
+            "LNST": data[1]
+        }
+    )
+
+    chart_melted = chart_data.melt(
+        "Danh mục", var_name="Loại giá trị", value_name="Giá trị")
+
+    bars = alt.Chart(chart_melted).mark_bar().encode(
+        x=alt.X("Danh mục:N", axis=alt.Axis(title="Danh mục", labelAngle=0)),
+        xOffset="Loại giá trị:N",
+        y="Giá trị:Q",
+        color=alt.Color("Loại giá trị:N", legend=None),
+        tooltip=["Danh mục", "Loại giá trị", "Giá trị"]
+    ).properties(
+        title='Doanh thu và Lợi nhuận sau thuế theo năm',
+        height=250
     )
 
     text = bars.mark_text(
@@ -340,7 +387,7 @@ def display_forigener_trading_trend_chart(foreigner_trading):
         tooltip=['index', 'Net Buy Value Formatted']  # Update tooltip
     ).properties(
         title='Xu hướng giao dịch mua ròng của nhà đầu tư nước ngoài',
-        height=300
+        height=250
     )
     st.altair_chart(chart, use_container_width=True)
     pass
@@ -433,10 +480,12 @@ def show_report_config_page():
 
         with col2:
             foreigner_trading = get_forigener_trading_trend(symbol)
-            display_lnst_doanhthu_chart(symbol)
+            display_lnst_doanhthu_quy_chart(symbol)
+            display_lnst_doanh_thu_nam_chart(symbol)
             display_forigener_trading_trend_chart(foreigner_trading)
             '###### Lịch sử trả cổ tức'
             display_dividend_payment_history_table(symbol)
+            
 
 
     with right_col:
