@@ -58,7 +58,7 @@ def display_report_table(symbol):
 
         # Convert report_date to datetime for filtering
         df['report_date'] = pd.to_datetime(df['report_date'])
-
+        
         # Apply date filter if filter_date_report is provided
         if filter_date_report:
             try:
@@ -108,7 +108,8 @@ def display_report_table(symbol):
             hide_index=True,
             # use_container_width=True,
             # Set max height to 800px to prevent excessively tall tables
-            height=min(35 * len(report_table) + 35, 800)
+            height=min(35 * len(report_table) + 35, 800),
+            width='content'
         )
     else:
         st.write(f"Không tìm thấy báo cáo cho mã chứng khoán: {symbol}")
