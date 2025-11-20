@@ -159,6 +159,22 @@ def delete_report(report_id):
     print(f"Report deleted with id: {report_id}")
 
 
+def update_report(report_id, source, report_date, gia_muc_tieu, doanh_thu, loi_nhuan_sau_thue, link):
+    update_sql = f"""
+    UPDATE report
+    SET source = '{source}', 
+        report_date = '{report_date}', 
+        gia_muc_tieu = {gia_muc_tieu}, 
+        doanh_thu = {doanh_thu}, 
+        loi_nhuan_sau_thue = {loi_nhuan_sau_thue}, 
+        link = '{link}'
+    WHERE id = {report_id};
+    """
+    print(update_sql)
+    db_conn.crud_query(update_sql)
+    print(f"Report updated with id: {report_id}")
+
+
 def update_price_config(symbol, high, low, rsi, trend):
     update_sql = f"""
     UPDATE price_config
