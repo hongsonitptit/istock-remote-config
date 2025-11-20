@@ -18,17 +18,6 @@ def clear_filter_date_report():
     st.session_state["filter_date_report"] = ""
 
 
-@st.dialog("Add link to blacklist")
-def show_dialog_to_add_link_to_blacklist() -> str:
-    link = st.text_input("Link báo cáo cần thêm vào blacklist:", key="blacklist_link_input")
-    if st.button("Thêm vào blacklist"):
-        # Placeholder for saving to database
-        current_year = datetime.now().year
-        set_hset(REPORT_LINK_BLACKLIST_KEY, link, current_year)
-        # set_hexpired(REPORT_LINK_BLACKLIST_KEY, int(now.timestamp()) + 10, link)  # Expire in 10s
-        st.success("Link đã được thêm vào blacklist (placeholder)")
-        st.rerun()  # Refresh the app to show updated data
-    pass
 
 
 def save_report_to_database(symbol, source, report_date, gia_muc_tieu, doanh_thu, loi_nhuan_sau_thue, link):
@@ -255,59 +244,6 @@ def display_report_table(symbol):
     pass
 
 
-def display_add_report_form(symbol):
-    col_buttons_1, col_buttons_2 = st.columns(2)
-    col_buttons_2 = col_buttons_2.container(
-        height="stretch", horizontal_alignment="right"
-    )
-    with col_buttons_1:
-    #     submitted = st.form_submit_button("Lưu báo cáo")
-        if st.button('Thêm báo cáo mới'):
-            st.session_state.show_report_form = True
-    with col_buttons_2:
-        if st.button("➕ Thêm link vào Blacklist"):
-            show_dialog_to_add_link_to_blacklist()
-
-    # if st.button('Thêm báo cáo mới'):
-    #     st.session_state.show_report_form = True
-
-    if 'show_report_form' not in st.session_state:
-        st.session_state.show_report_form = False
-
-    if st.session_state.show_report_form:
-        st.subheader('Nhập dữ liệu báo cáo mới')
-        with st.form("new_report_form"):
-            new_report_date = st.date_input(
-                "Ngày báo cáo", format="YYYY-MM-DD", key="new_report_date")
-            new_source = st.text_input("Nguồn", key="new_source")
-            new_link = st.text_input("Link báo cáo", key="new_link")
-            new_gia_muc_tieu = st.number_input(
-                "Giá mục tiêu", min_value=0, key="new_gia_muc_tieu")
-            new_doanh_thu = st.number_input(
-                "Doanh thu", min_value=0, key="new_doanh_thu")
-            new_loi_nhuan_sau_thue = st.number_input(
-                "Lợi nhuận sau thuế", min_value=0, key="new_loi_nhuan_sau_thue")
-
-            col_buttons_1, col_buttons_2 = st.columns(2)
-            col_buttons_2 = col_buttons_2.container(
-                height="stretch", horizontal_alignment="right"
-            )
-            with col_buttons_1:
-                submitted = st.form_submit_button("Lưu báo cáo")
-            with col_buttons_2:
-                cancel = st.form_submit_button("Hủy")
-
-            if submitted:
-                # Placeholder for saving to database
-                save_report_to_database(symbol, new_source, new_report_date,
-                                        new_gia_muc_tieu, new_doanh_thu, new_loi_nhuan_sau_thue, new_link)
-                st.success("Dữ liệu đã được lưu (placeholder)")
-                st.session_state.show_report_form = False  # Hide form after submission
-                st.rerun()  # Refresh the app to show updated data
-            if cancel:
-                st.session_state.show_report_form = False
-                st.rerun()
-    pass
 
 
 @st.dialog("Update price config")
@@ -631,5 +567,4 @@ def show_report_config_page():
     with right_col:
         if symbol:
             display_report_table(symbol)
-        display_add_report_form(symbol)
         display_summary_reports()
