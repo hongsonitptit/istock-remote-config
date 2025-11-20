@@ -6,7 +6,7 @@ from database.postgre import PostgreDatabase
 from ui.ui_utils import highlight_rows
 from utils.data_utils import (get_report_by_symbol, get_main_stock_data,
                         get_doanh_thu_loi_nhuan_quy, save_report,
-                        get_doanh_thu_loi_nhuan_nam,
+                        get_doanh_thu_loi_nhuan_nam, delete_report,
                         update_price_config, get_forigener_trading_trend,
                         format_currency_short, get_company_estimations)
 import altair as alt
@@ -68,7 +68,14 @@ def display_report_table(symbol):
                 st.warning(
                     "Định dạng ngày không hợp lệ. Vui lòng nhập theo định dạng YYYY-MM-DD.")
 
+        # Store original IDs before formatting
+        original_ids = df['id'].tolist()
+        
         df_display = df.copy()
+        
+        # Add checkbox column for deletion at the beginning
+        df_display.insert(0, 'Xóa', False)
+        
         # Format the 'doanh_thu' column with thousands separator
         df_display['id'] = df['id'].apply(lambda x: "{:,}".format(int(x)))
         # df_display['id'] = df_display['id'].astype(str)
@@ -83,7 +90,7 @@ def display_report_table(symbol):
         doanh_thu_mean = int(df['doanh_thu'].mean())
         gia_muc_tieu_mean = round(df['gia_muc_tieu'].mean(),1)
         loi_nhuan_sau_thue_mean = int(df['loi_nhuan_sau_thue'].mean())
-        mean_data = ["Mean", "", "", "",
+        mean_data = [False, "Mean", "", "", "",
                      "{:,}".format(gia_muc_tieu_mean),
                      "{:,}".format(doanh_thu_mean),
                      "{:,}".format(loi_nhuan_sau_thue_mean),
@@ -91,17 +98,29 @@ def display_report_table(symbol):
         footer = pd.DataFrame([mean_data], columns=df_display.columns)
         # Changed ignore_index to True
         report_table = pd.concat([df_display, footer], ignore_index=True)
+        
+        # Convert all columns except 'Xóa' to string
         for col in report_table.columns:
-            # Dùng apply(str) để xử lý mọi loại giá trị (kể cả NaN/None, "") thành chuỗi.
-            report_table[col] = report_table[col].apply(str)
+            if col != 'Xóa':
+                # Dùng apply(str) để xử lý mọi loại giá trị (kể cả NaN/None, "") thành chuỗi.
+                report_table[col] = report_table[col].apply(str)
 
         # print(report_table.columns)
         # print(report_table)
 
-        # display the table with the footer
-        st.dataframe(
-            report_table.style.apply(highlight_rows, axis=1),
+        # display the table with checkbox column using data_editor
+        edited_df = st.data_editor(
+            report_table,
             column_config={
+                "Xóa": st.column_config.CheckboxColumn(
+                    "Xóa",
+                    help="Chọn để xóa báo cáo",
+                    default=False,
+                ),
+                "id": st.column_config.TextColumn(
+                    "ID",
+                    width="small",
+                ),
                 "link": st.column_config.LinkColumn("Link", help="Báo cáo chi tiết"),
                 "report_date": st.column_config.TextColumn("Ngày báo cáo", help="Ngày phát hành báo cáo"),
             },
@@ -109,8 +128,43 @@ def display_report_table(symbol):
             # use_container_width=True,
             # Set max height to 800px to prevent excessively tall tables
             height=min(35 * len(report_table) + 35, 800),
-            width='content'
+            width='content',
+            disabled=[col for col in report_table.columns if col != 'Xóa']  # Only allow editing the checkbox column
         )
+        
+        # Add blacklist & delete button (aligned to the right)
+        col_empty, col_button = st.columns([3, 1])
+        with col_button:
+            if st.button("🚫 Blacklist & Xóa", type="secondary", use_container_width=True):
+                # Get selected rows (excluding the Mean row which is the last one)
+                selected_indices = edited_df[edited_df['Xóa'] == True].index.tolist()
+                # Filter out the Mean row (last row)
+                selected_indices = [idx for idx in selected_indices if idx < len(original_ids)]
+                
+                if selected_indices:
+                    # Add URLs to blacklist and delete selected reports
+                    deleted_count = 0
+                    blacklisted_count = 0
+                    current_year = datetime.now().year
+                    
+                    for idx in selected_indices:
+                        report_id = original_ids[idx]
+                        # Get the link/URL from the original dataframe
+                        link = df.iloc[idx]['link']
+                        
+                        # Add to blacklist if link is not empty
+                        if link and link.strip():
+                            set_hset(REPORT_LINK_BLACKLIST_KEY, link, current_year)
+                            blacklisted_count += 1
+                        
+                        # Delete the report
+                        delete_report(report_id)
+                        deleted_count += 1
+                    
+                    st.success(f"Đã xóa {deleted_count} báo cáo và thêm {blacklisted_count} link vào blacklist")
+                    st.rerun()
+                else:
+                    st.warning("Vui lòng chọn ít nhất một báo cáo để xóa")
     else:
         st.write(f"Không tìm thấy báo cáo cho mã chứng khoán: {symbol}")
     pass
@@ -126,7 +180,7 @@ def display_add_report_form(symbol):
         if st.button('Thêm báo cáo mới'):
             st.session_state.show_report_form = True
     with col_buttons_2:
-        if st.button("Blacklist"):
+        if st.button("➕ Thêm link vào Blacklist"):
             show_dialog_to_add_link_to_blacklist()
 
     # if st.button('Thêm báo cáo mới'):

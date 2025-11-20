@@ -151,6 +151,14 @@ def save_report(symbol, source, report_date, gia_muc_tieu, doanh_thu, loi_nhuan_
     print(f"Report saved for {symbol} - {source} - {report_date}")
 
 
+def delete_report(report_id):
+    delete_sql = f"""
+    DELETE FROM report WHERE id = {report_id};
+    """
+    db_conn.crud_query(delete_sql)
+    print(f"Report deleted with id: {report_id}")
+
+
 def update_price_config(symbol, high, low, rsi, trend):
     update_sql = f"""
     UPDATE price_config
