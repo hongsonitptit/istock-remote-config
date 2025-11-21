@@ -30,19 +30,18 @@ st.set_page_config(
 # ''
 # # ''
 
-tab1, tab2, tab3, tab4 = st.tabs(["Report", "Remote Config", "Trend", "PNL"])
+show_report_config_page()
 
-with tab1:
-    show_report_config_page()
+# tab1, tab2, tab3, tab4 = st.tabs(["Report", "Remote Config", "Trend", "PNL"])
 
-with tab2:
-    show_remote_config_page()
+# with tab1:
+#     show_report_config_page()
 
-with tab3:
-    show_trend_page()
+# with tab2:
+#     show_remote_config_page()
 
-with tab4:
-    show_pnl_page()
+# with tab3:
+#     show_trend_page()
 
-
-
+# with tab4:
+#     show_pnl_page()
