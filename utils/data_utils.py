@@ -1,4 +1,5 @@
 from database.postgre import PostgreDatabase
+from logger import default_logger as logger
 
 db_conn = PostgreDatabase()
 
@@ -148,7 +149,7 @@ def save_report(symbol, source, report_date, gia_muc_tieu, doanh_thu, loi_nhuan_
     VALUES ('{symbol.upper()}', '{source}', '{report_date}', {gia_muc_tieu}, {doanh_thu}, {loi_nhuan_sau_thue}, '{link}');
     """
     db_conn.crud_query(insert_sql)
-    print(f"Report saved for {symbol} - {source} - {report_date}")
+    logger.info(f"Report saved for {symbol} - {source} - {report_date}")
 
 
 def delete_report(report_id):
@@ -156,7 +157,7 @@ def delete_report(report_id):
     DELETE FROM report WHERE id = {report_id};
     """
     db_conn.crud_query(delete_sql)
-    print(f"Report deleted with id: {report_id}")
+    logger.info(f"Report deleted with id: {report_id}")
 
 
 def update_report(report_id, source, report_date, gia_muc_tieu, doanh_thu, loi_nhuan_sau_thue, link):
@@ -170,9 +171,9 @@ def update_report(report_id, source, report_date, gia_muc_tieu, doanh_thu, loi_n
         link = '{link}'
     WHERE id = {report_id};
     """
-    print(update_sql)
+    logger.info(update_sql)
     db_conn.crud_query(update_sql)
-    print(f"Report updated with id: {report_id}")
+    logger.info(f"Report updated with id: {report_id}")
 
 
 def update_price_config(symbol, high, low, rsi, trend):
@@ -182,7 +183,7 @@ def update_price_config(symbol, high, low, rsi, trend):
     WHERE symbol = '{symbol.upper()}';
     """
     db_conn.crud_query(update_sql)
-    print(f"Price config updated for {symbol} - high: {high}, low: {low}")
+    logger.info(f"Price config updated for {symbol} - high: {high}, low: {low}")
 
 
 def convert_forigener_trading_data(foreigner_data_str: str):

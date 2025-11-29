@@ -1,6 +1,7 @@
 import csv
 from datetime import datetime
 from utils.data_utils import save_report
+from logger import default_logger as logger
 
 def insert_reports_from_csv(csv_file_path):
     with open(csv_file_path, 'r', encoding='utf-8') as file:
@@ -23,9 +24,9 @@ def insert_reports_from_csv(csv_file_path):
 
                 save_report(symbol, source, report_date, gia_muc_tieu, doanh_thu, loi_nhuan_sau_thue, link)
             except ValueError as e:
-                print(f"Error processing row: {row}. Error: {e}")
+                logger.error(f"Error processing row: {row}. Error: {e}")
             except Exception as e:
-                print(f"An unexpected error occurred for row: {row}. Error: {e}")
+                logger.error(f"An unexpected error occurred for row: {row}. Error: {e}")
 
 if __name__ == "__main__":
     csv_file = 'command/reports.csv'
