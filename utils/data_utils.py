@@ -1,5 +1,6 @@
 from database.postgre import PostgreDatabase
 from logger import default_logger as logger
+from utils.vnstock_utils import get_company_info
 
 db_conn = PostgreDatabase()
 
@@ -36,7 +37,11 @@ get_report_by_symbol('FPT')
 
 
 def get_main_stock_data(symbol: str):
+    company_info = get_company_info(symbol)
     data = dict()
+    data['name'] = company_info['name']
+    data['industry'] = company_info['industry']
+    data['avg_trading_volume'] = company_info['avg_trading_volume']
     price_rsi_sql = f"""
     select price::float/1000 price, rsi as rsi_14, change_percent from current_price cp  
     where cp.symbol = '{symbol.upper()}'

@@ -326,16 +326,9 @@ def display_main_stock_data(main_data):
         # Sử dụng :.2f để làm tròn đến 2 chữ số thập phân (nếu cần) và bọc bằng thẻ span
         formatted_gap = f'<span style="color: {color}; font-weight: bold;">{gap_value:.2f}</span>'
         # Lưu ý: Markdown trong Streamlit hỗ trợ HTML.
-    markdown_table = f"""
-    | Chỉ số | Giá trị |
-    |--------|---------|
-    | RSI 14 ngày | {formatted_rsi} |
-    | Giá cao nhất | {"N/A" if main_data.get('high') is None else main_data.get('high')} |
-    | Giá thấp nhất | {"N/A" if main_data.get('low') is None else main_data.get('low')} |
-    | GAP | {formatted_gap} % |
-    | Tổng cổ phiếu | {main_data.get('total', 0):,} |
-    | Quyết định | {"N/A" if main_data.get('trend') is None else main_data.get('trend')} |
-    """
+    
+    # hiển thị các thông tin
+    st.markdown(f"<small><b>{main_data['name']}</b></small></br><small><i>{main_data['industry']}</i></small>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     current_price = main_data.get('price', 'N/A')
     cost_price = main_data.get('cost_price', 0)
@@ -353,6 +346,17 @@ def display_main_stock_data(main_data):
 
 
     # Hiển thị bảng đã được tô màu
+    markdown_table = f"""
+    | Chỉ số | Giá trị |
+    |--------|---------|
+    | RSI 14 ngày | {formatted_rsi} |
+    | Giá cao nhất | {"N/A" if main_data.get('high') is None else main_data.get('high')} |
+    | Giá thấp nhất | {"N/A" if main_data.get('low') is None else main_data.get('low')} |
+    | GAP | {formatted_gap} % |
+    | Tổng cổ phiếu | {main_data.get('total', 0):,} |
+    | KLGD TB 20 | {format_currency_short(main_data.get('avg_trading_volume', 0))} |
+    | Quyết định | {"N/A" if main_data.get('trend') is None else main_data.get('trend')} |
+    """
     st.markdown(markdown_table, unsafe_allow_html=True)
     # RẤT QUAN TRỌNG: Thêm tham số unsafe_allow_html=True để cho phép HTML/Màu sắc
     pass
@@ -498,7 +502,7 @@ def display_summary_reports(symbol):
     """Hiển thị đồ thị lịch sử P/E và P/B của cổ phiếu"""
     from utils.vnstock_utils import get_pe_pb_history
     
-    st.write("### 📊 Lịch sử P/E và P/B")
+    # st.write("### 📊 Lịch sử P/E và P/B")
     
     # Lấy dữ liệu P/E và P/B
     pe_pb_data = get_pe_pb_history(symbol)
