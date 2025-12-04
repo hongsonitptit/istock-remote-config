@@ -249,15 +249,15 @@ def display_report_table(symbol):
 @st.dialog("Update price config")
 def show_update_price_config_dialog(main_data, symbol):
     new_high = st.number_input("High", min_value=0.0, value=float(
-        main_data.get('high', 0)), key="new_high")
+        main_data.get('high') or 0), key="new_high")
     new_low = st.number_input("Low", min_value=0.0, value=float(
-        main_data.get('low', 0)), key="new_low")
-    new_rsi_14 = st.number_input("RSI 14", value=main_data.get(
-        'rsi_14', 0), min_value=0.0, max_value=100.0, format="%.2f", key="new_rsi_14")
+        main_data.get('low') or 0), key="new_low")
+    new_rsi_14 = st.number_input("RSI 14", value=float(main_data.get(
+        'rsi_14') or 0), min_value=0.0, max_value=100.0, format="%.2f", key="new_rsi_14")
     if new_rsi_14 <= 30:
         st.warning("RSI 14 <= 30 !")
     new_trend = st.text_input("Quyết định", value=main_data.get(
-        'trend', 'N/A'), key="new_trend")
+        'trend') or 'N/A', key="new_trend")
 
     if st.button("Update"):
         # Placeholder for saving to database
@@ -328,7 +328,7 @@ def display_main_stock_data(main_data):
         # Lưu ý: Markdown trong Streamlit hỗ trợ HTML.
     
     # hiển thị các thông tin
-    st.markdown(f"<small><b>{main_data['name']}</b></small></br><small><i>{main_data['industry']}</i></small>", unsafe_allow_html=True)
+    # st.markdown(f"<small><b>{main_data['name']}</b></small></br><small><i>{main_data['industry']}</i></small>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     current_price = main_data.get('price', 'N/A')
     cost_price = main_data.get('cost_price', 0)
@@ -344,7 +344,6 @@ def display_main_stock_data(main_data):
         else:
             st.metric(label="Giá vốn", value=f"{cost_price:,}")
 
-
     # Hiển thị bảng đã được tô màu
     markdown_table = f"""
     | Chỉ số | Giá trị |
@@ -359,6 +358,7 @@ def display_main_stock_data(main_data):
     """
     st.markdown(markdown_table, unsafe_allow_html=True)
     # RẤT QUAN TRỌNG: Thêm tham số unsafe_allow_html=True để cho phép HTML/Màu sắc
+    st.markdown(f"<small><b>{main_data['name']}</b></small></br><small><i>{main_data['industry']}</i></small>", unsafe_allow_html=True)
     pass
 
 
