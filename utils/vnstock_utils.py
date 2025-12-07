@@ -120,8 +120,8 @@ def get_company_info(symbol: str) -> dict:
         stock = Vnstock().stock(symbol=symbol, source='VCI')
         company_info = stock.company.overview()
         info = company_info.iloc[0]
-        industry = ", ".join(
-            [info[col] for col in company_info.columns.tolist() if col.startswith('icb_')])
+        industry_list = list(set([info[col] for col in company_info.columns.tolist() if col.startswith('icb_')]))
+        industry = ", ".join(industry_list)
 
         print("\n\nĐang lấy dữ liệu giao dịch 20 phiên gần nhất...")
 
