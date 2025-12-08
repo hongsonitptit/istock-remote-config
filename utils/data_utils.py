@@ -8,7 +8,7 @@ db_conn = PostgreDatabase()
 def format_currency_short(value):
     # Handle None values
     if value is None:
-        return "0"
+        return "N/A"
     
     if abs(value) >= 1_000_000_000:
         return f"{value / 1_000_000_000:.1f}B"
