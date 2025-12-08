@@ -10,6 +10,15 @@ def format_currency_short(value):
     if value is None:
         return "N/A"
     
+    # Handle string values - try to convert to float
+    if isinstance(value, str):
+        # Remove commas if present (e.g., "1,234,567")
+        value = value.replace(',', '')
+        try:
+            value = float(value)
+        except (ValueError, AttributeError):
+            return "N/A"
+    
     if abs(value) >= 1_000_000_000:
         return f"{value / 1_000_000_000:.1f}B"
     elif abs(value) >= 1_000_000:

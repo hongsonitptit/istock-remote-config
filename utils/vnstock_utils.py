@@ -159,7 +159,7 @@ def get_company_info(symbol: str) -> dict:
         return {
             'name': "",
             'industry': "",
-            'avg_trading_volume': ""
+            'avg_trading_volume': None
         }
 
 
