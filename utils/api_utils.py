@@ -47,8 +47,6 @@ def get_dividend_payment_histories(symbol, page=0, size=20):
 
     return result
 
-# get_dividend_payment_histories("MSN", page=0, size=5)
-
 
 def get_list_similar_company(symbol: str) -> list:
     url = f"https://api2.simplize.vn/api/personalize/compare/list/{symbol}"
@@ -114,5 +112,54 @@ def get_avg_pe_pb_industry(symbol: str) -> dict:
         'avg_pb': avg_pb
     }
 
+
+def get_dividend_payment_histories_2(symbol: str) -> list:
+    try:
+        url = "https://iq.vietcap.com.vn/api/iq-insight-service/v1/events"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0',
+            'Accept': 'application/json',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br, zstd',
+            'Referer': 'https://trading.vietcap.com.vn/',
+            'Origin': 'https://trading.vietcap.com.vn',
+            'Connection': 'keep-alive',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-site',
+        }
+        current_year = datetime.now().year
+        params = {
+            'ticker': symbol,
+            'fromDate': f'{current_year-2}0101',
+            'toDate': f'{current_year}1231',
+            'eventCode': 'DIV,ISS',
+            'page': '0',
+            'size': '50'
+        }
+
+        response = requests.get(url, headers=headers, params=params)
+        # response.raise_for_status()
+        data = json.loads(response.text)
+        data = data['data']['content']
+        result = []
+        for item in data:
+            exe_date = item['displayDate1'].split("T")[0]
+            value = item['exerciseRatio']
+            method = ' - '.join(item['eventTitleVi'].split(" - ")[1:])
+            result.append({
+                'Thời gian': exe_date,
+                'Giá trị %': f"{round(value*100,2)}",
+                'Loại': method,
+            })
+        return result
+    except Exception as e:
+        logger.exception(f"Error getting dividend payment histories: {e}")
+        return []
+    
+    
+
+
 # logger.info(get_list_similar_company("MSN"))
 # logger.info(get_avg_pe_pb_industry("MSN"))
+# logger.info(get_dividend_payment_histories_2("PC1"))

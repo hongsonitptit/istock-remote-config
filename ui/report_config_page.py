@@ -474,8 +474,8 @@ def display_forigener_trading_trend_chart(foreigner_trading):
 
 
 def display_dividend_payment_history_table(symbol):
-    from utils.api_utils import get_dividend_payment_histories
-    dividend_data = get_dividend_payment_histories(symbol, page=0, size=10)
+    from utils.api_utils import get_dividend_payment_histories_2
+    dividend_data = get_dividend_payment_histories_2(symbol)
     if dividend_data:
         df = pd.DataFrame(dividend_data)
 
