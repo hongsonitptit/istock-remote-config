@@ -460,16 +460,77 @@ def display_forigener_trading_trend_chart(foreigner_trading):
     df['Net Buy Value Formatted'] = df['Net Buy Value'].apply(
         format_currency_short)
 
-    chart = alt.Chart(df).mark_line(point=True).encode(
-        # Use index as ordinal data for x-axis
-        x=alt.X('index:O', axis=alt.Axis(title='Thời gian', labelAngle=0)),
-        y=alt.Y('Net Buy Value:Q', title='Giá trị mua ròng',
-                axis=alt.Axis(format='s')),  # Apply short format to Y-axis
+    # Lấy giá trị đầu tiên và cuối cùng
+    first_value = df['Net Buy Value'].iloc[0]
+    first_index = df['index'].iloc[0]
+    last_value = df['Net Buy Value'].iloc[-1]
+    last_index = df['index'].iloc[-1]
+    
+    # Xác định màu cho line chart dựa trên xu hướng
+    line_color = 'green' if last_value >= first_value else 'red'
+    
+    # Tạo base chart
+    base = alt.Chart(df).encode(
+        x=alt.X('index:O', axis=None),  # Ẩn trục X
+        y=alt.Y('Net Buy Value:Q', axis=None),  # Ẩn trục Y
         tooltip=['index', 'Net Buy Value Formatted']  # Update tooltip
-    ).properties(
+    )
+    
+    # Tạo đường line với màu động
+    line = base.mark_line(color=line_color, strokeWidth=2)
+    
+    # Tạo các điểm với màu động
+    points = base.mark_point(color=line_color, size=50, filled=True)
+    
+    # Kết hợp line và points
+    line_chart = line + points
+    
+    # Tạo text annotation cho giá trị đầu tiên
+    first_point_data = pd.DataFrame({
+        'index': [first_index],
+        'Net Buy Value': [first_value],
+        'text': [format_currency_short(first_value)]
+    })
+    
+    first_text = alt.Chart(first_point_data).mark_text(
+        align='right',
+        dx=-5,  # Offset về bên trái
+        dy=-5,  # Offset lên trên
+        fontSize=12,
+        fontWeight='bold',
+        color='black'  # Màu đen
+    ).encode(
+        x=alt.X('index:O'),
+        y=alt.Y('Net Buy Value:Q'),
+        text='text:N'
+    )
+    
+    # Tạo text annotation cho giá trị cuối cùng
+    last_point_data = pd.DataFrame({
+        'index': [last_index],
+        'Net Buy Value': [last_value],
+        'text': [format_currency_short(last_value)]
+    })
+    
+    last_text = alt.Chart(last_point_data).mark_text(
+        align='left',
+        dx=5,  # Offset về bên phải
+        dy=-5,  # Offset lên trên
+        fontSize=12,
+        fontWeight='bold',
+        color='black'  # Màu đen
+    ).encode(
+        x=alt.X('index:O'),
+        y=alt.Y('Net Buy Value:Q'),
+        text='text:N'
+    )
+    
+    # Kết hợp các layer
+    chart = (line_chart + first_text + last_text).properties(
         title='GDNN',
         height=250
     )
+    
     st.altair_chart(chart, use_container_width=True)
     pass
 
@@ -694,12 +755,44 @@ def display_rsi_14_chart(symbol):
         
         # Tạo đường RSI chính
         line_rsi = alt.Chart(chart_data).mark_line(point=True, color='#2E86AB', strokeWidth=2).encode(
-            x=alt.X('index:O', axis=alt.Axis(title='Thời gian', labelAngle=0)),
-            y=alt.Y('RSI:Q', title='RSI', scale=alt.Scale(domain=[0, 100])),
+            x=alt.X('index:O', axis=None),  # Ẩn trục X
+            y=alt.Y('RSI:Q', axis=None, scale=alt.Scale(domain=[0, 100])),  # Ẩn trục Y
             tooltip=[
                 alt.Tooltip('time:N', title='Ngày'),
                 alt.Tooltip('RSI:Q', title='RSI', format='.2f')
             ]
+        )
+        
+        # Lấy giá trị RSI cuối cùng
+        last_rsi = chart_data['RSI'].iloc[-1]
+        last_index = chart_data['index'].iloc[-1]
+        
+        # Xác định màu cho text dựa trên giá trị RSI
+        if last_rsi < 30:
+            text_color = 'red'
+        elif last_rsi > 70:
+            text_color = 'purple'
+        else:
+            text_color = 'green'
+        
+        # Tạo text annotation cho giá trị RSI cuối cùng
+        last_point_data = pd.DataFrame({
+            'index': [last_index],
+            'RSI': [last_rsi],
+            'text': [f'{last_rsi:.2f}']
+        })
+        
+        text_annotation = alt.Chart(last_point_data).mark_text(
+            align='left',
+            dx=5,  # Offset về bên phải
+            dy=-5,  # Offset lên trên một chút
+            fontSize=14,
+            fontWeight='bold',
+            color=text_color
+        ).encode(
+            x=alt.X('index:O'),
+            y=alt.Y('RSI:Q'),
+            text='text:N'
         )
         
         # Tạo đường mức 30 (oversold)
@@ -716,8 +809,8 @@ def display_rsi_14_chart(symbol):
             strokeWidth=1
         ).encode(y='y:Q')
         
-        # Kết hợp các layer
-        chart = (line_rsi + oversold_line + overbought_line).properties(
+        # Kết hợp các layer (thêm text_annotation)
+        chart = (line_rsi + oversold_line + overbought_line + text_annotation).properties(
             title='RSI 14 ngày',
             height=250
         )
