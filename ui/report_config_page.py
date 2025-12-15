@@ -12,6 +12,7 @@ from utils.data_utils import (get_report_by_symbol, get_main_stock_data,
 import altair as alt
 from utils.redis_utils import REPORT_LINK_BLACKLIST_KEY, set_hexpired, set_hset
 from datetime import datetime
+from logger import default_logger as logger
 
 
 def clear_filter_date_report():
@@ -466,7 +467,7 @@ def display_forigener_trading_trend_chart(foreigner_trading):
                 axis=alt.Axis(format='s')),  # Apply short format to Y-axis
         tooltip=['index', 'Net Buy Value Formatted']  # Update tooltip
     ).properties(
-        title='Xu hướng giao dịch mua ròng của nhà đầu tư nước ngoài',
+        title='GDNN',
         height=250
     )
     st.altair_chart(chart, use_container_width=True)
@@ -652,6 +653,81 @@ def display_company_estimations(symbol):
             st.write(f"Không tìm thấy dữ liệu định giá cho mã chứng khoán: {symbol}")
         pass
 
+
+def display_rsi_14_chart(symbol):
+    """Hiển thị biểu đồ RSI 14 ngày của cổ phiếu"""
+    from utils.vnstock_utils import get_list_rsi_14
+    
+    try:
+        # Lấy dữ liệu RSI 30 ngày gần nhất
+        rsi_data = get_list_rsi_14(symbol, days=180, rsi_period=14)
+        
+        if rsi_data is None or rsi_data.empty:
+            st.warning(f"Không thể lấy dữ liệu RSI cho mã {symbol}")
+            return
+        
+        rsi_data = rsi_data.tail(30)
+
+        # Tạo DataFrame cho biểu đồ
+        # Kiểm tra xem có cột 'time' không, nếu không thì dùng index
+        if 'time' in rsi_data.columns:
+            time_labels = rsi_data['time'].astype(str).values
+        elif hasattr(rsi_data.index, 'strftime'):
+            # Index là DatetimeIndex
+            time_labels = rsi_data.index.strftime('%Y-%m-%d').values
+        else:
+            # Index là RangeIndex hoặc kiểu khác, tạo label đơn giản
+            time_labels = [f"T{i+1}" for i in range(len(rsi_data))]
+        
+        chart_data = pd.DataFrame({
+            'index': range(len(rsi_data)),
+            'RSI': rsi_data['rsi'].values,
+            'time': time_labels
+        })
+        
+        # Loại bỏ các giá trị NaN
+        chart_data = chart_data.dropna()
+        
+        if chart_data.empty:
+            st.warning(f"Không có dữ liệu RSI hợp lệ cho mã {symbol}")
+            return
+        
+        # Tạo đường RSI chính
+        line_rsi = alt.Chart(chart_data).mark_line(point=True, color='#2E86AB', strokeWidth=2).encode(
+            x=alt.X('index:O', axis=alt.Axis(title='Thời gian', labelAngle=0)),
+            y=alt.Y('RSI:Q', title='RSI', scale=alt.Scale(domain=[0, 100])),
+            tooltip=[
+                alt.Tooltip('time:N', title='Ngày'),
+                alt.Tooltip('RSI:Q', title='RSI', format='.2f')
+            ]
+        )
+        
+        # Tạo đường mức 30 (oversold)
+        oversold_line = alt.Chart(pd.DataFrame({'y': [30]})).mark_rule(
+            strokeDash=[5, 5], 
+            color='red', 
+            strokeWidth=1
+        ).encode(y='y:Q')
+        
+        # Tạo đường mức 70 (overbought)
+        overbought_line = alt.Chart(pd.DataFrame({'y': [70]})).mark_rule(
+            strokeDash=[5, 5], 
+            color='purple', 
+            strokeWidth=1
+        ).encode(y='y:Q')
+        
+        # Kết hợp các layer
+        chart = (line_rsi + oversold_line + overbought_line).properties(
+            title='RSI 14 ngày',
+            height=250
+        )
+        
+        st.altair_chart(chart, use_container_width=True)
+        
+    except Exception as e:
+        logger.exception(f"Lỗi khi hiển thị biểu đồ RSI cho {symbol}: {e}")
+        st.error(f"Lỗi khi hiển thị biểu đồ RSI: {str(e)}")
+
 # -----------------------------------------------------------------------------
 # Declare some useful functions.
 
@@ -694,7 +770,11 @@ def show_report_config_page():
             foreigner_trading = get_forigener_trading_trend(symbol)
             display_lnst_doanhthu_quy_chart(symbol)
             display_lnst_doanh_thu_nam_chart(symbol)
-            display_forigener_trading_trend_chart(foreigner_trading)
+            chart_col1, chart_col2 = st.columns([1,1])
+            with chart_col1:
+                display_forigener_trading_trend_chart(foreigner_trading)
+            with chart_col2:
+                display_rsi_14_chart(symbol)
             '###### Lịch sử trả cổ tức'
             display_dividend_payment_history_table(symbol)
             
