@@ -60,7 +60,7 @@ def get_main_stock_data(symbol: str):
     where cp.symbol = '{symbol.upper()}'
     """
     rsi_sql = f"""
-    select rsi_14 from price_config
+    select last_rsi_14 as rsi_14 from rsi
     where symbol = '{symbol.upper()}'
     """
     gia_von_sql = f"""
