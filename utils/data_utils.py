@@ -1,6 +1,8 @@
 from database.postgre import PostgreDatabase
 from logger import default_logger as logger
 from utils.vnstock_utils import get_company_info
+import json
+import pandas as pd
 
 db_conn = PostgreDatabase()
 
@@ -229,13 +231,13 @@ def convert_forigener_trading_data(foreigner_data_str: str):
 
 def get_forigener_trading_trend(symbol: str):
     trading_sql = f"""
-    select foreigner from price_config
+    select history_values from foreigner_trading
     where symbol = '{symbol.upper()}'
     """
     result = db_conn.raw_query(trading_sql)
     if not result:
         return []
-    foreigner_data_str = result[0].get('foreigner', "")
+    foreigner_data_str = result[0].get('history_values', "")
 
     # Parse the string data
     if not foreigner_data_str:
@@ -259,5 +261,23 @@ def get_company_estimations(symbol: str):
     if result:
         return result[0]
     return {}
+
+def get_rsi_history(symbol: str) -> pd.DataFrame:
+    rsi_sql = f"""
+    select history_rsi_14 from rsi
+    where symbol = '{symbol.upper()}'
+    """
+    result = db_conn.raw_query(rsi_sql)
+    if not result:
+        return []
+    rsi_data_str = result[0].get('history_rsi_14', "")
+
+    # Parse the string data
+    if not rsi_data_str:
+        return []
+    data = json.loads(rsi_data_str)
+    return pd.DataFrame(data)
+
+# get_rsi_history('FPT')
 
 # get_forigener_trading_trend('FPT')

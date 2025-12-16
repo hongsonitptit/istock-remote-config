@@ -8,7 +8,8 @@ from utils.data_utils import (get_report_by_symbol, get_main_stock_data,
                         get_doanh_thu_loi_nhuan_quy, save_report,
                         get_doanh_thu_loi_nhuan_nam, delete_report, update_report,
                         update_price_config, get_forigener_trading_trend,
-                        format_currency_short, get_company_estimations)
+                        format_currency_short, get_company_estimations,
+                        get_rsi_history)
 import altair as alt
 from utils.redis_utils import REPORT_LINK_BLACKLIST_KEY, set_hexpired, set_hset
 from datetime import datetime
@@ -17,8 +18,7 @@ from logger import default_logger as logger
 
 def clear_filter_date_report():
     st.session_state["filter_date_report"] = ""
-
-
+    # st.rerun()
 
 
 def save_report_to_database(symbol, source, report_date, gia_muc_tieu, doanh_thu, loi_nhuan_sau_thue, link):
@@ -449,7 +449,7 @@ def display_lnst_doanh_thu_nam_chart(symbol):
     pass
 
 
-def display_forigener_trading_trend_chart(foreigner_trading):
+def display_forigener_trading_trend_chart(foreigner_trading, symbol):
     # Sample data for demonstration
     data = {
         'Net Buy Value': foreigner_trading
@@ -471,8 +471,9 @@ def display_forigener_trading_trend_chart(foreigner_trading):
     
     # Tạo base chart
     base = alt.Chart(df).encode(
+        # x=alt.X('index:O', axis=alt.Axis(title='Ngày', labelAngle=0)),  # Hiển thị trục X
         x=alt.X('index:O', axis=None),  # Ẩn trục X
-        y=alt.Y('Net Buy Value:Q', axis=None),  # Ẩn trục Y
+        y=alt.Y('Net Buy Value:Q', axis=alt.Axis(title='Giá trị (VNĐ)', format='~s')),  # Hiển thị trục Y dạng rút gọn (15M)
         tooltip=['index', 'Net Buy Value Formatted']  # Update tooltip
     )
     
@@ -485,50 +486,48 @@ def display_forigener_trading_trend_chart(foreigner_trading):
     # Kết hợp line và points
     line_chart = line + points
     
-    # Tạo text annotation cho giá trị đầu tiên
-    first_point_data = pd.DataFrame({
-        'index': [first_index],
-        'Net Buy Value': [first_value],
-        'text': [format_currency_short(first_value)]
-    })
+    # Lấy giá trị max của y để đặt text ở góc trên
+    max_value = df['Net Buy Value'].max()
     
-    first_text = alt.Chart(first_point_data).mark_text(
-        align='right',
-        dx=-5,  # Offset về bên trái
-        dy=-5,  # Offset lên trên
+    # Tạo text annotation cố định ở góc trên bên trái
+    first_text = alt.Chart(pd.DataFrame({
+        'text': [format_currency_short(first_value)]
+    })).mark_text(
+        align='left',
+        baseline='top',
+        dx=5,  # Offset từ cạnh trái
+        dy=5,  # Offset từ cạnh trên
         fontSize=12,
         fontWeight='bold',
-        color='black'  # Màu đen
+        color='black'
     ).encode(
-        x=alt.X('index:O'),
-        y=alt.Y('Net Buy Value:Q'),
+        x=alt.value(0),  # Vị trí pixel cố định bên trái
+        y=alt.value(0),  # Vị trí pixel cố định ở trên
         text='text:N'
     )
     
-    # Tạo text annotation cho giá trị cuối cùng
-    last_point_data = pd.DataFrame({
-        'index': [last_index],
-        'Net Buy Value': [last_value],
+    # Tạo text annotation cố định ở góc trên bên phải
+    last_text = alt.Chart(pd.DataFrame({
         'text': [format_currency_short(last_value)]
-    })
-    
-    last_text = alt.Chart(last_point_data).mark_text(
-        align='left',
-        dx=5,  # Offset về bên phải
-        dy=-5,  # Offset lên trên
+    })).mark_text(
+        align='right',
+        baseline='top',
+        dx=-5,  # Offset từ cạnh phải
+        dy=5,  # Offset từ cạnh trên
         fontSize=12,
         fontWeight='bold',
-        color='black'  # Màu đen
+        color='black'
     ).encode(
-        x=alt.X('index:O'),
-        y=alt.Y('Net Buy Value:Q'),
+        x=alt.value(200),  # Vị trí pixel cố định bên phải (điều chỉnh theo width)
+        y=alt.value(0),  # Vị trí pixel cố định ở trên
         text='text:N'
     )
     
     # Kết hợp các layer
-    chart = (line_chart + first_text + last_text).properties(
+    # chart = (line_chart + first_text + last_text).properties(
+    chart = (line_chart).properties(
         title='GDNN',
-        height=250
+        height=200
     )
     
     st.altair_chart(chart, use_container_width=True)
@@ -715,20 +714,14 @@ def display_company_estimations(symbol):
         pass
 
 
-def display_rsi_14_chart(symbol):
+def display_rsi_14_chart(rsi_data, symbol):
     """Hiển thị biểu đồ RSI 14 ngày của cổ phiếu"""
-    from utils.vnstock_utils import get_list_rsi_14
-    
     try:
-        # Lấy dữ liệu RSI 30 ngày gần nhất
-        rsi_data = get_list_rsi_14(symbol, days=180, rsi_period=14)
-        
+        # st.write("RSI 14 ngày")
         if rsi_data is None or rsi_data.empty:
             st.warning(f"Không thể lấy dữ liệu RSI cho mã {symbol}")
             return
         
-        rsi_data = rsi_data.tail(30)
-
         # Tạo DataFrame cho biểu đồ
         # Kiểm tra xem có cột 'time' không, nếu không thì dùng index
         if 'time' in rsi_data.columns:
@@ -743,7 +736,9 @@ def display_rsi_14_chart(symbol):
         chart_data = pd.DataFrame({
             'index': range(len(rsi_data)),
             'RSI': rsi_data['rsi'].values,
-            'time': time_labels
+            'time': time_labels,
+            'oversold': 30,
+            'overbought': 70
         })
         
         # Loại bỏ các giá trị NaN
@@ -755,64 +750,74 @@ def display_rsi_14_chart(symbol):
         
         # Tạo đường RSI chính
         line_rsi = alt.Chart(chart_data).mark_line(point=True, color='#2E86AB', strokeWidth=2).encode(
+            # x=alt.X('index:O', axis=alt.Axis(title='Ngày', labelAngle=0)),  # Hiển thị trục X
             x=alt.X('index:O', axis=None),  # Ẩn trục X
-            y=alt.Y('RSI:Q', axis=None, scale=alt.Scale(domain=[0, 100])),  # Ẩn trục Y
+            y=alt.Y('RSI:Q', axis=alt.Axis(title='RSI'), scale=alt.Scale(domain=[20, 90])),  # Hiển thị trục Y
             tooltip=[
                 alt.Tooltip('time:N', title='Ngày'),
                 alt.Tooltip('RSI:Q', title='RSI', format='.2f')
             ]
         )
         
-        # Lấy giá trị RSI cuối cùng
-        last_rsi = chart_data['RSI'].iloc[-1]
-        last_index = chart_data['index'].iloc[-1]
+        # # Lấy giá trị RSI cuối cùng
+        # last_rsi = chart_data['RSI'].iloc[-1]
+        # last_index = chart_data['index'].iloc[-1]
         
-        # Xác định màu cho text dựa trên giá trị RSI
-        if last_rsi < 30:
-            text_color = 'red'
-        elif last_rsi > 70:
-            text_color = 'purple'
-        else:
-            text_color = 'green'
+        # # Xác định màu cho text dựa trên giá trị RSI
+        # if last_rsi < 30:
+        #     text_color = 'red'
+        # elif last_rsi > 70:
+        #     text_color = 'purple'
+        # else:
+        #     text_color = 'green'
         
-        # Tạo text annotation cho giá trị RSI cuối cùng
-        last_point_data = pd.DataFrame({
-            'index': [last_index],
-            'RSI': [last_rsi],
-            'text': [f'{last_rsi:.2f}']
-        })
+        # # Tạo text annotation cho giá trị RSI cuối cùng
+        # last_point_data = pd.DataFrame({
+        #     'index': [last_index],
+        #     'RSI': [last_rsi],
+        #     'text': [f'{last_rsi:.2f}']
+        # })
         
-        text_annotation = alt.Chart(last_point_data).mark_text(
-            align='left',
-            dx=5,  # Offset về bên phải
-            dy=-5,  # Offset lên trên một chút
-            fontSize=14,
-            fontWeight='bold',
-            color=text_color
-        ).encode(
-            x=alt.X('index:O'),
-            y=alt.Y('RSI:Q'),
-            text='text:N'
-        )
+        # text_annotation = alt.Chart(last_point_data).mark_text(
+        #     align='left',
+        #     # dx=5,  # Offset về bên phải
+        #     # dy=-5,  # Offset lên trên một chút
+        #     dx=-20,  # Offset về bên phải
+        #     dy=-20,  # Offset lên trên một chút
+        #     fontSize=14,
+        #     fontWeight='bold',
+        #     color=text_color
+        # ).encode(
+        #     x=alt.X('index:O'),
+        #     y=alt.Y('RSI:Q'),
+        #     text='text:N'
+        # )
         
         # Tạo đường mức 30 (oversold)
-        oversold_line = alt.Chart(pd.DataFrame({'y': [30]})).mark_rule(
+        oversold_line = alt.Chart(chart_data).mark_line(
             strokeDash=[5, 5], 
             color='red', 
-            strokeWidth=1
-        ).encode(y='y:Q')
+            strokeWidth=2
+        ).encode(
+            x=alt.X('index:O', axis=None),
+            y='oversold:Q'
+        )
         
         # Tạo đường mức 70 (overbought)
-        overbought_line = alt.Chart(pd.DataFrame({'y': [70]})).mark_rule(
+        overbought_line = alt.Chart(chart_data).mark_line(
             strokeDash=[5, 5], 
             color='purple', 
-            strokeWidth=1
-        ).encode(y='y:Q')
+            strokeWidth=2
+        ).encode(
+            x=alt.X('index:O', axis=None),
+            y='overbought:Q'
+        )
         
         # Kết hợp các layer (thêm text_annotation)
-        chart = (line_rsi + oversold_line + overbought_line + text_annotation).properties(
+        # chart = (line_rsi + oversold_line + overbought_line + text_annotation).properties(
+        chart = (line_rsi + oversold_line + overbought_line).properties(
             title='RSI 14 ngày',
-            height=250
+            height=200
         )
         
         st.altair_chart(chart, use_container_width=True)
@@ -840,9 +845,20 @@ def display_rsi_14_chart(symbol):
 # ''
 # # ''
 
+def display_gdnn_and_rsi_chart(symbol):
+    foreigner_trading = get_forigener_trading_trend(symbol)
+    # Lấy dữ liệu RSI 30 ngày gần nhất
+    rsi_data = get_rsi_history(symbol)
+    chart_col1, chart_col2 = st.columns(2)
+    with chart_col1:
+        display_forigener_trading_trend_chart(foreigner_trading, symbol)
+
+    with chart_col2:
+        display_rsi_14_chart(rsi_data, symbol)
+
+
 def show_report_config_page():
     left_col, right_col = st.columns([1, 1])
-
 
     with left_col:
         # f'''
@@ -860,19 +876,12 @@ def show_report_config_page():
             display_company_estimations(symbol)
 
         with col2:
-            foreigner_trading = get_forigener_trading_trend(symbol)
             display_lnst_doanhthu_quy_chart(symbol)
             display_lnst_doanh_thu_nam_chart(symbol)
-            chart_col1, chart_col2 = st.columns([1,1])
-            with chart_col1:
-                display_forigener_trading_trend_chart(foreigner_trading)
-            with chart_col2:
-                display_rsi_14_chart(symbol)
+            display_gdnn_and_rsi_chart(symbol)
             '###### Lịch sử trả cổ tức'
             display_dividend_payment_history_table(symbol)
             
-
-
     with right_col:
         if symbol:
             display_report_table(symbol)
