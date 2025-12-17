@@ -30,7 +30,8 @@ def get_pe_pb_history(symbol: str, recent_years: int = 10):
         Trả về None nếu có lỗi
     """
     try:
-        stock = Vnstock().stock(symbol=symbol, source='VCI')
+        # stock = Vnstock().stock(symbol=symbol, source='VCI')
+        stock = Vnstock().stock(symbol=symbol, source='TCBS')
 
         # Lấy dữ liệu chỉ số tài chính theo quý
         logger.info(
