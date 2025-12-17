@@ -541,6 +541,15 @@ def display_dividend_payment_history_table(symbol):
         df = pd.DataFrame(dividend_data)
 
         def highlight_rows(row):
+            try:
+                payment_date = pd.to_datetime(row['Thời gian'])
+                current_date = pd.Timestamp.now()
+                
+                if payment_date > current_date:
+                    return ['background-color: #d1e7dd; color: #0f5132'] * len(row)
+            except Exception:
+                pass
+
             if row.name % 2 == 0:
                 # Light grey for even rows
                 return ['background-color: #f0f2f6'] * len(row)
