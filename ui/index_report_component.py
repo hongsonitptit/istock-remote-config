@@ -6,6 +6,7 @@ from utils.data_utils import get_main_stock_data
 from datetime import datetime, timedelta
 from vnstock import Vnstock
 from logger import default_logger as logger
+from config import USE_VNSTOCK
 
 def get_latest_reported_quarter(date_obj):
     """
@@ -412,8 +413,12 @@ def calculate_pb_history(symbol):
 def display_summary_reports(symbol):
     """Hiển thị đồ thị lịch sử P/E và P/B của cổ phiếu"""
     # Thử tính P/E và P/B bằng thư viện vnstock
-    pe_df = calculate_pe_history(symbol)
-    pb_df = calculate_pb_history(symbol)
+    if USE_VNSTOCK:
+        pe_df = calculate_pe_history(symbol)
+        pb_df = calculate_pb_history(symbol)
+    else:
+        pe_df = None
+        pb_df = None
 
     # nếu không tính được pe/pb bằng thư viện vnstock thì lấy data từ API
     if pe_df is None or pe_df.empty or pb_df is None or pb_df.empty:

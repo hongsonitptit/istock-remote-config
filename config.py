@@ -28,3 +28,5 @@ COCK_HOST = os.getenv("COCK_HOST", "default_cock_host")
 COCK_DATABASE = os.getenv("COCK_DATABASE", "default_cock_db")
 COCK_USER = os.getenv("COCK_USER", "default_cock_user")
 COCK_PASSWORD = os.getenv("COCK_PASSWORD", "default_cock_password")
+
+USE_VNSTOCK = os.getenv("USE_VNSTOCK", False)
