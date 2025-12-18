@@ -1,6 +1,6 @@
 from database.postgre import PostgreDatabase
 from logger import default_logger as logger
-from utils.vnstock_utils import get_company_info
+from utils.api_utils import get_company_info
 import json
 import pandas as pd
 
@@ -57,6 +57,8 @@ def get_main_stock_data(symbol: str):
     data['name'] = company_info['name']
     data['industry'] = company_info['industry']
     data['avg_trading_volume'] = company_info['avg_trading_volume']
+    data['website'] = company_info['website']
+    data['exchange'] = company_info['exchange']
     price_rsi_sql = f"""
     select price::float/1000 price, rsi as rsi_14, change_percent from current_price cp  
     where cp.symbol = '{symbol.upper()}'

@@ -1,7 +1,7 @@
 import requests
 import json
 from tcbs import get_token, tcbs_son
-from datetime import datetime
+from datetime import datetime, timedelta
 from logger import default_logger as logger
 from statistics import median
 import pandas as pd
@@ -185,6 +185,93 @@ def get_dividend_payment_histories_2(symbol: str) -> list:
         logger.exception(f"Error getting dividend payment histories: {e}")
         return []
 
+
+def get_volume_history(symbol: str, start: str, end: str) -> dict:
+    try:
+        url = f"https://trade.pinetree.vn/stockHis.pt?symbol={symbol}&from={start}&to={end}&page=1&pageSize=1000"
+
+        payload = {}
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0',
+            'Accept': '*/*',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br, zstd',
+            'Referer': 'https://trade.pinetree.vn/',
+            'Connection': 'keep-alive',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-origin',
+            'Priority': 'u=4',
+            'Cookie': 'route=797533ac5607ed1f4076438965e16adf'
+        }
+
+        response = requests.request("GET", url, headers=headers, data=payload)
+        result = {}
+        data = json.loads(response.text)
+        for item in data:
+            result[item['TradingDate']] = item['TotalVol']
+        return result
+    except Exception as e:
+        logger.exception(f"Error getting volume history: {e}")
+        return {}
+
+
+
+def get_company_info(symbol: str) -> dict:
+    try:
+        url = f"https://trade.pinetree.vn/companyInfo.pt?symbol={symbol.upper()}"
+
+        payload = {}
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0',
+            'Accept': '*/*',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br, zstd',
+            'Referer': 'https://trade.pinetree.vn/',
+            'Connection': 'keep-alive',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-origin',
+            'Priority': 'u=4',
+            'Cookie': 'route=797533ac5607ed1f4076438965e16adf'
+        }
+
+        response = requests.request("GET", url, headers=headers, data=payload)
+
+        data = json.loads(response.text)
+
+        company_name = data['FullName']
+        website = data['URL']
+        exchange = data['Exchange']
+        if data['IndustryName'] in data['SubIndustryName']:
+            industry = ', '.join([data['SubIndustryName'], data['SectorName']])
+        else:
+            industry = ', '.join([data['IndustryName'], data['SubIndustryName']])
+
+        # get avg trading volume of 20 session
+        start = (datetime.now() - timedelta(days=20)).strftime('%Y-%m-%d')
+        end = datetime.now().strftime('%Y-%m-%d')
+        volume_history = get_volume_history(symbol, start, end)
+        avg_volume_20 = sum(volume_history.values()) / len(volume_history)
+
+        return {
+            'name': company_name,
+            'industry': industry,
+            'website': website,
+            'exchange': exchange,
+            'avg_trading_volume': avg_volume_20
+        }
+    except Exception as e:
+        logger.exception(f"Lỗi khi lấy thông tin cổ phiếu cho {symbol}: {e}")
+        return {
+            'name': "",
+            'industry': "",
+            'website': "",
+            'exchange': "",
+            'avg_trading_volume': None
+        }
+
+logger.info(get_company_info("MSN"))
 
 # logger.info(get_list_similar_company("MSN"))
 # logger.info(get_avg_pe_pb_industry("MSN"))

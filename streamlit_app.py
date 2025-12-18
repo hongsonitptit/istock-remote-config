@@ -16,6 +16,7 @@ st.markdown("""
         .block-container {
             padding-left: 20px;
             padding-right: 20px;
+            padding-top: 0px;
         }
     </style>
     """, unsafe_allow_html=True)

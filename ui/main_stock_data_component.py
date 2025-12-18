@@ -86,5 +86,5 @@ def display_main_stock_data(main_data):
     """
     st.markdown(markdown_table, unsafe_allow_html=True)
     # RẤT QUAN TRỌNG: Thêm tham số unsafe_allow_html=True để cho phép HTML/Màu sắc
-    st.markdown(f"<small><b>{main_data['name']}</b></small></br><small><i>{main_data['industry']}</i></small>", unsafe_allow_html=True)
+    st.markdown(f"<small><b>{main_data['name']} - {main_data['exchange']}</b></small></br><small><i>{main_data['industry']}</i></small></br><small><href target='{main_data['website']}'>{main_data['website']}</href></small>", unsafe_allow_html=True)
     pass
