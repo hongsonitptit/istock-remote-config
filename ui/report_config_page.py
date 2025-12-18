@@ -4,247 +4,29 @@ import math
 from pathlib import Path
 from database.postgre import PostgreDatabase
 from ui.ui_utils import highlight_rows
-from utils.data_utils import (get_report_by_symbol, get_main_stock_data,
-                        get_doanh_thu_loi_nhuan_quy, save_report,
-                        get_doanh_thu_loi_nhuan_nam, delete_report, update_report,
-                        update_price_config, get_forigener_trading_trend,
-                        format_currency_short, get_company_estimations,
-                        get_rsi_history)
+from ui.main_stock_data_component import display_main_stock_data
+from ui.gdnn_rsi_chart_component import display_gdnn_and_rsi_chart
+from ui.report_table_component import display_report_table
+from ui.index_report_component import display_summary_reports
+from utils.data_utils import (get_main_stock_data,
+                              get_doanh_thu_loi_nhuan_quy, save_report,
+                              get_doanh_thu_loi_nhuan_nam,
+                              update_price_config, get_forigener_trading_trend,
+                              format_currency_short, get_company_estimations,
+                              get_rsi_history)
 import altair as alt
-from utils.redis_utils import REPORT_LINK_BLACKLIST_KEY, set_hexpired, set_hset
+
 from datetime import datetime
 from logger import default_logger as logger
 
 
 def clear_filter_date_report():
     st.session_state["filter_date_report"] = ""
-    # st.rerun()
 
 
 def save_report_to_database(symbol, source, report_date, gia_muc_tieu, doanh_thu, loi_nhuan_sau_thue, link):
     save_report(symbol, source, report_date, gia_muc_tieu,
                 doanh_thu, loi_nhuan_sau_thue, link)
-
-
-def display_report_table(symbol):
-    reports_data = get_report_by_symbol(symbol)
-    # print(reports_data)
-    if reports_data:
-        col_report_1, col_report_2 = st.columns([1,3])
-        col_report_2 = col_report_2.container(
-            horizontal_alignment="right"
-        )
-        '###### Báo cáo dự phóng'
-        with col_report_1:
-            filter_date_report = st.text_input(
-                label="xxx", placeholder="Lọc theo ngày báo cáo ...", 
-                key="filter_date_report", label_visibility='hidden')
-        with col_report_2:
-            # if st.button("Xóa bộ lọc"):
-            #     show_dialog_to_add_link_to_blacklist()
-            pass
-            # '###### Dữ liệu báo cáo 2'
-        df = pd.DataFrame(reports_data)
-
-        # Convert report_date to datetime for filtering
-        df['report_date'] = pd.to_datetime(df['report_date'])
-        
-        # Apply date filter if filter_date_report is provided
-        if filter_date_report:
-            try:
-                filter_date = pd.to_datetime(filter_date_report)
-                df = df[df['report_date'] >= filter_date]
-            except ValueError:
-                st.warning(
-                    "Định dạng ngày không hợp lệ. Vui lòng nhập theo định dạng YYYY-MM-DD.")
-
-
-        # Store original IDs and data before formatting
-        original_ids = df['id'].tolist()
-        original_df = df.copy()  # Keep original data for comparison
-        
-        df_display = df.copy()
-        
-        # Add checkbox column for deletion at the beginning
-        df_display.insert(0, 'Xóa', False)
-        
-        # Keep numeric columns as numbers for editing (don't format yet)
-        # Only format ID as string
-        df_display['id'] = df['id'].apply(lambda x: "{:,}".format(int(x)))
-        
-        # Ensure numeric columns are actually numeric
-        df_display['gia_muc_tieu'] = pd.to_numeric(df_display['gia_muc_tieu'], errors='coerce')
-        df_display['doanh_thu'] = pd.to_numeric(df_display['doanh_thu'], errors='coerce')
-        df_display['loi_nhuan_sau_thue'] = pd.to_numeric(df_display['loi_nhuan_sau_thue'], errors='coerce')
-
-        # Calculate and display mean for 'doanh_thu' separately since it's a TextColumn
-        doanh_thu_mean = int(df['doanh_thu'].mean())
-        gia_muc_tieu_mean = round(df['gia_muc_tieu'].mean(),1)
-        loi_nhuan_sau_thue_mean = int(df['loi_nhuan_sau_thue'].mean())
-        mean_data = [False, "Mean", "", "", "",
-                     gia_muc_tieu_mean,
-                     doanh_thu_mean,
-                     loi_nhuan_sau_thue_mean,
-                     ""]
-        footer = pd.DataFrame([mean_data], columns=df_display.columns)
-        # Changed ignore_index to True
-        report_table = pd.concat([df_display, footer], ignore_index=True)
-        
-        # Convert specific columns to string (not numeric ones)
-        for col in ['id', 'symbol', 'source', 'link']:
-            if col in report_table.columns:
-                report_table[col] = report_table[col].apply(str)
-        
-        # Convert report_date to string
-        report_table['report_date'] = report_table['report_date'].apply(str)
-
-        # print(report_table.columns)
-        # print(report_table)
-
-        # Save a copy of the original table for comparison
-        original_report_table = report_table.copy()
-
-        # Initialize editor reset counter in session state
-        if 'editor_reset_counter' not in st.session_state:
-            st.session_state.editor_reset_counter = 0
-
-        # display the table with checkbox column using data_editor
-        # Use counter in key to force reset after save
-        edited_df = st.data_editor(
-            report_table,
-            column_config={
-                "Xóa": st.column_config.CheckboxColumn(
-                    "Xóa",
-                    help="Chọn để xóa báo cáo",
-                    default=False,
-                ),
-                "id": st.column_config.TextColumn(
-                    "ID",
-                    width="small",
-                ),
-                "source": st.column_config.TextColumn("Nguồn"),
-                "gia_muc_tieu": st.column_config.NumberColumn(
-                    "Giá mục tiêu",
-                    format="%.1f",
-                ),
-                "doanh_thu": st.column_config.NumberColumn(
-                    "Doanh thu",
-                    format="%d",
-                ),
-                "loi_nhuan_sau_thue": st.column_config.NumberColumn(
-                    "LNST",
-                    format="%d",
-                ),
-                "link": st.column_config.LinkColumn("Link", help="Báo cáo chi tiết"),
-                "report_date": st.column_config.TextColumn("Ngày báo cáo", help="Ngày phát hành báo cáo"),
-            },
-            hide_index=True,
-            # use_container_width=True,
-            # Set max height to 800px to prevent excessively tall tables
-            height=min(35 * len(report_table) + 35, 800),
-            width='content',
-            disabled=["id", "symbol"],  # Only disable id and symbol columns
-            num_rows="fixed",  # Prevent adding/deleting rows
-            key=f"report_table_editor_{st.session_state.editor_reset_counter}"  # Dynamic key to reset state
-        )
-        
-        # Add buttons for save and blacklist/delete (aligned to the right)
-        col_btn_1, col_btn_2 = st.columns([3, 1])
-        
-        with col_btn_1:
-            if st.button("💾 Lưu thay đổi", type="secondary"):
-                # Compare original database data and edited dataframes to find changes
-                changes_made = False
-                update_count = 0
-                
-                # Only check rows that are not the Mean row
-                for idx in range(len(original_ids)):
-                    # Get original data from database
-                    orig_source = str(original_df.iloc[idx]['source'])
-                    orig_date = str(original_df.iloc[idx]['report_date'])
-                    orig_gia = float(original_df.iloc[idx]['gia_muc_tieu'])  # Already divided by 1000 from query
-                    orig_dt = int(original_df.iloc[idx]['doanh_thu'])
-                    orig_lnst = int(original_df.iloc[idx]['loi_nhuan_sau_thue'])
-                    orig_link = str(original_df.iloc[idx]['link'])
-                    
-                    # Get edited data
-                    edited_row = edited_df.iloc[idx]
-                    edit_source = str(edited_row['source'])
-                    edit_date = str(edited_row['report_date'])
-                    edit_gia = float(edited_row['gia_muc_tieu'])  # This is in thousands (divided by 1000)
-                    edit_dt = int(edited_row['doanh_thu'])
-                    edit_lnst = int(edited_row['loi_nhuan_sau_thue'])
-                    edit_link = str(edited_row['link'])
-                    
-                    # Check if any editable field has changed
-                    if (orig_source != edit_source or
-                        orig_date != edit_date or
-                        orig_gia != edit_gia or
-                        orig_dt != edit_dt or
-                        orig_lnst != edit_lnst or
-                        orig_link != edit_link):
-                        
-                        # Update the report
-                        # Note: gia_muc_tieu needs to be multiplied by 1000 before saving to database
-                        report_id = original_ids[idx]
-                        update_report(
-                            report_id,
-                            edit_source,
-                            edit_date,
-                            edit_gia * 1000,  # Multiply by 1000 to convert back to VND
-                            edit_dt,
-                            edit_lnst,
-                            edit_link
-                        )
-                        changes_made = True
-                        update_count += 1
-                
-                if changes_made:
-                    st.success(f"Đã cập nhật {update_count} báo cáo")
-                    # Increment counter to reset editor on next run
-                    st.session_state.editor_reset_counter += 1
-                    st.rerun()
-                else:
-                    st.info("Không có thay đổi nào để lưu")
-        
-        with col_btn_2:
-            if st.button("🚫 Blacklist & Xóa", type="secondary", use_container_width=True):
-                # Get selected rows (excluding the Mean row which is the last one)
-                selected_indices = edited_df[edited_df['Xóa'] == True].index.tolist()
-                # Filter out the Mean row (last row)
-                selected_indices = [idx for idx in selected_indices if idx < len(original_ids)]
-                
-                if selected_indices:
-                    # Add URLs to blacklist and delete selected reports
-                    deleted_count = 0
-                    blacklisted_count = 0
-                    current_year = datetime.now().year
-                    
-                    for idx in selected_indices:
-                        report_id = original_ids[idx]
-                        # Get the link/URL from the original dataframe
-                        link = df.iloc[idx]['link']
-                        
-                        # Add to blacklist if link is not empty
-                        if link and link.strip():
-                            set_hset(REPORT_LINK_BLACKLIST_KEY, link, current_year)
-                            blacklisted_count += 1
-                        
-                        # Delete the report
-                        delete_report(report_id)
-                        deleted_count += 1
-                    
-                    st.success(f"Đã xóa {deleted_count} báo cáo và thêm {blacklisted_count} link vào blacklist")
-                    # Increment counter to reset editor on next run
-                    st.session_state.editor_reset_counter += 1
-                    st.rerun()
-                else:
-                    st.warning("Vui lòng chọn ít nhất một báo cáo để xóa")
-    else:
-        st.write(f"Không tìm thấy báo cáo cho mã chứng khoán: {symbol}")
-    pass
-
-
 
 
 @st.dialog("Update price config")
@@ -271,95 +53,6 @@ def show_update_price_config_dialog(main_data, symbol):
 def display_update_price_config_button(main_data, symbol):
     if st.button('Update price config'):
         show_update_price_config_dialog(main_data, symbol)
-    pass
-
-
-def display_main_stock_data(main_data):
-    # Lấy giá trị rsi_14, mặc định là 'N/A' nếu không có
-    rsi_value = main_data.get('rsi_14')
-    gap_value = main_data.get('gap', 'N/A')
-
-    # Biến để lưu chuỗi RSI đã được định dạng màu
-    formatted_rsi = str(rsi_value)
-    formatted_gap = str(gap_value)
-
-    # Kiểm tra nếu rsi_value là một số (int/float) thì mới tiến hành tô màu
-    if isinstance(rsi_value, (int, float)):
-        # Xác định màu dựa trên điều kiện
-        if rsi_value >= 35 and rsi_value < 70:
-            # Xanh lá cây nếu >= 35 và < 70
-            color = 'green'
-        elif rsi_value < 35:
-            # Đỏ nếu < 35
-            color = 'red'
-        elif rsi_value >= 70:
-            # Tím nếu >= 70 (tôi dùng >= 70 thay vì > 70 để bao gồm cả 70)
-            color = 'purple'
-        else:
-            # Nếu có lỗi gì đó, vẫn để màu mặc định
-            color = 'inherit'
-
-        # Tạo chuỗi HTML để hiển thị giá trị với màu sắc
-        # Sử dụng :.2f để làm tròn đến 2 chữ số thập phân (nếu cần) và bọc bằng thẻ span
-        formatted_rsi = f'<span style="color: {color}; font-weight: bold;">{rsi_value:.2f}</span>'
-        # Lưu ý: Markdown trong Streamlit hỗ trợ HTML.
-
-    # Kiểm tra nếu rsi_value là một số (int/float) thì mới tiến hành tô màu
-    if isinstance(gap_value, (int, float)):
-        # Xác định màu dựa trên điều kiện
-        if gap_value >= 10 and gap_value <= 20:
-            # Xanh lá cây nếu >= 10 và < 20
-            color = 'green'
-        elif gap_value < 5:
-            # Đỏ nếu < 5
-            color = 'red'
-        elif gap_value >= 5 and gap_value < 10:
-            # Vàng nếu > 5 và < 10
-            color = 'orange'
-        elif gap_value > 20:
-            # Tím nếu > 20
-            color = 'purple'
-        else:
-            # Nếu có lỗi gì đó, vẫn để màu mặc định
-            color = 'inherit'
-
-        # Tạo chuỗi HTML để hiển thị giá trị với màu sắc
-        # Sử dụng :.2f để làm tròn đến 2 chữ số thập phân (nếu cần) và bọc bằng thẻ span
-        formatted_gap = f'<span style="color: {color}; font-weight: bold;">{gap_value:.2f}</span>'
-        # Lưu ý: Markdown trong Streamlit hỗ trợ HTML.
-    
-    # hiển thị các thông tin
-    # st.markdown(f"<small><b>{main_data['name']}</b></small></br><small><i>{main_data['industry']}</i></small>", unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
-    current_price = main_data.get('price', 'N/A')
-    cost_price = main_data.get('cost_price', 0)
-    with col1:
-        st.metric(label="Giá hiện tại", value=f"{current_price:,}", delta=f"{main_data.get('change_percent', 0):.2f}%")
-    with col2:
-        if cost_price > 0:
-            if current_price >= cost_price:
-                pnl = (current_price/cost_price-1)*100
-            else:
-                pnl = -(cost_price/current_price-1)*100
-            st.metric(label="Giá vốn", value=f"{cost_price:,}", delta=f"{pnl:.2f}%")
-        else:
-            st.metric(label="Giá vốn", value=f"{cost_price:,}")
-
-    # Hiển thị bảng đã được tô màu
-    markdown_table = f"""
-    | Chỉ số | Giá trị |
-    |--------|---------|
-    | RSI 14 ngày | {formatted_rsi} |
-    | Giá cao nhất | {"N/A" if main_data.get('high') is None else main_data.get('high')} |
-    | Giá thấp nhất | {"N/A" if main_data.get('low') is None else main_data.get('low')} |
-    | GAP | {formatted_gap} % |
-    | Tổng cổ phiếu | {main_data.get('total', 0):,} |
-    | KLGD TB 20 | {format_currency_short(main_data.get('avg_trading_volume', 0))} |
-    | Quyết định | {"N/A" if main_data.get('trend') is None else main_data.get('trend')} |
-    """
-    st.markdown(markdown_table, unsafe_allow_html=True)
-    # RẤT QUAN TRỌNG: Thêm tham số unsafe_allow_html=True để cho phép HTML/Màu sắc
-    st.markdown(f"<small><b>{main_data['name']}</b></small></br><small><i>{main_data['industry']}</i></small>", unsafe_allow_html=True)
     pass
 
 
@@ -449,91 +142,6 @@ def display_lnst_doanh_thu_nam_chart(symbol):
     pass
 
 
-def display_forigener_trading_trend_chart(foreigner_trading, symbol):
-    # Sample data for demonstration
-    data = {
-        'Net Buy Value': foreigner_trading
-    }
-    df = pd.DataFrame(data)
-    df['index'] = df.index  # Add an index column to use as x-axis
-
-    df['Net Buy Value Formatted'] = df['Net Buy Value'].apply(
-        format_currency_short)
-
-    # Lấy giá trị đầu tiên và cuối cùng
-    first_value = df['Net Buy Value'].iloc[0]
-    first_index = df['index'].iloc[0]
-    last_value = df['Net Buy Value'].iloc[-1]
-    last_index = df['index'].iloc[-1]
-    
-    # Xác định màu cho line chart dựa trên xu hướng
-    line_color = 'green' if last_value >= first_value else 'red'
-    
-    # Tạo base chart
-    base = alt.Chart(df).encode(
-        # x=alt.X('index:O', axis=alt.Axis(title='Ngày', labelAngle=0)),  # Hiển thị trục X
-        x=alt.X('index:O', axis=None),  # Ẩn trục X
-        y=alt.Y('Net Buy Value:Q', axis=alt.Axis(title='Giá trị (VNĐ)', format='~s')),  # Hiển thị trục Y dạng rút gọn (15M)
-        tooltip=['index', 'Net Buy Value Formatted']  # Update tooltip
-    )
-    
-    # Tạo đường line với màu động
-    line = base.mark_line(color=line_color, strokeWidth=2)
-    
-    # Tạo các điểm với màu động
-    points = base.mark_point(color=line_color, size=50, filled=True)
-    
-    # Kết hợp line và points
-    line_chart = line + points
-    
-    # Lấy giá trị max của y để đặt text ở góc trên
-    max_value = df['Net Buy Value'].max()
-    
-    # Tạo text annotation cố định ở góc trên bên trái
-    first_text = alt.Chart(pd.DataFrame({
-        'text': [format_currency_short(first_value)]
-    })).mark_text(
-        align='left',
-        baseline='top',
-        dx=5,  # Offset từ cạnh trái
-        dy=5,  # Offset từ cạnh trên
-        fontSize=12,
-        fontWeight='bold',
-        color='black'
-    ).encode(
-        x=alt.value(0),  # Vị trí pixel cố định bên trái
-        y=alt.value(0),  # Vị trí pixel cố định ở trên
-        text='text:N'
-    )
-    
-    # Tạo text annotation cố định ở góc trên bên phải
-    last_text = alt.Chart(pd.DataFrame({
-        'text': [format_currency_short(last_value)]
-    })).mark_text(
-        align='right',
-        baseline='top',
-        dx=-5,  # Offset từ cạnh phải
-        dy=5,  # Offset từ cạnh trên
-        fontSize=12,
-        fontWeight='bold',
-        color='black'
-    ).encode(
-        x=alt.value(200),  # Vị trí pixel cố định bên phải (điều chỉnh theo width)
-        y=alt.value(0),  # Vị trí pixel cố định ở trên
-        text='text:N'
-    )
-    
-    # Kết hợp các layer
-    # chart = (line_chart + first_text + last_text).properties(
-    chart = (line_chart).properties(
-        title='GDNN',
-        height=200
-    )
-    
-    st.altair_chart(chart, use_container_width=True)
-    pass
-
-
 def display_dividend_payment_history_table(symbol):
     from utils.api_utils import get_dividend_payment_histories_2
     dividend_data = get_dividend_payment_histories_2(symbol)
@@ -544,7 +152,7 @@ def display_dividend_payment_history_table(symbol):
             try:
                 payment_date = pd.to_datetime(row['Thời gian'])
                 current_date = pd.Timestamp.now()
-                
+
                 if payment_date > current_date:
                     return ['background-color: #d1e7dd; color: #0f5132'] * len(row)
             except Exception:
@@ -567,142 +175,10 @@ def display_dividend_payment_history_table(symbol):
     else:
         st.write(
             f"Không tìm thấy dữ liệu trả cổ tức cho mã chứng khoán: {symbol}")
-        
-def display_summary_reports(symbol):
-    """Hiển thị đồ thị lịch sử P/E và P/B của cổ phiếu"""
-    from utils.vnstock_utils import get_pe_pb_history
-    
-    # st.write("### 📊 Lịch sử P/E và P/B")
-    
-    # Lấy dữ liệu P/E và P/B
-    pe_pb_data = get_pe_pb_history(symbol)
-    
-    if pe_pb_data is None:
-        st.warning(f"Không thể lấy dữ liệu P/E và P/B cho mã {symbol}")
-        return
-    
-    chart_data = pe_pb_data['data']
-    stats = pe_pb_data['stats']
-    
-    # Hiển thị 2 cột cho 2 đồ thị
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.write("#### P/E (Price-to-Earnings)")
-        
-        # Tạo DataFrame cho đường trung bình
-        mean_pe = stats['pe']['mean']
-        chart_data_with_mean = chart_data.copy()
-        chart_data_with_mean['P/E Mean'] = mean_pe
-        
-        # Tạo biểu đồ line cho P/E
-        base_pe = alt.Chart(chart_data_with_mean).encode(
-            x=alt.X('time_label:N', axis=alt.Axis(title='Kỳ báo cáo', labelAngle=-45))
-        )
-        
-        # Đường P/E thực tế
-        line_pe = base_pe.mark_line(point=True, color='#2E86AB', strokeWidth=2).encode(
-            y=alt.Y('P/E:Q', title='P/E', scale=alt.Scale(zero=False)),
-            tooltip=[
-                alt.Tooltip('time_label:N', title='Kỳ'),
-                alt.Tooltip('P/E:Q', title='P/E', format='.2f')
-            ]
-        )
-        
-        # Đường trung bình
-        mean_line_pe = base_pe.mark_line(strokeDash=[5, 5], color='red', strokeWidth=2).encode(
-            y=alt.Y('P/E Mean:Q'),
-            tooltip=[alt.Tooltip('P/E Mean:Q', title='TB lịch sử', format='.2f')]
-        )
-        
-        # Vùng fill
-        area_pe = base_pe.mark_area(opacity=0.3, color='#2E86AB').encode(
-            y=alt.Y('P/E:Q')
-        )
-        
-        # Kết hợp các layer
-        chart_pe = (area_pe + line_pe + mean_line_pe).properties(
-            height=300
-        )
-        
-        st.altair_chart(chart_pe, use_container_width=True)
-        
-        # Hiển thị thống kê P/E
-        pe_deviation = ((stats['pe']['current'] - mean_pe) / mean_pe) * 100
-        
-        st.markdown(f"""
-        **Thống kê P/E:**
-        - Hiện tại: **{stats['pe']['current']:.2f}**
-        - Trung bình: {mean_pe:.2f}
-        - Cao nhất: {stats['pe']['max']:.2f}
-        - Thấp nhất: {stats['pe']['min']:.2f}
-        """)
-        
-        if pe_deviation > 10:
-            st.warning(f"⚠️ Cao hơn TB {pe_deviation:.1f}% - Có thể định giá cao")
-        elif pe_deviation < -10:
-            st.success(f"✓ Thấp hơn TB {abs(pe_deviation):.1f}% - Có thể định giá thấp")
-        else:
-            st.info(f"→ Gần mức TB ({pe_deviation:+.1f}%)")
-        
-    with col2:
-        st.write("#### P/B (Price-to-Book)")
-        
-        # Tạo DataFrame cho đường trung bình
-        mean_pb = stats['pb']['mean']
-        chart_data_with_mean = chart_data.copy()
-        chart_data_with_mean['P/B Mean'] = mean_pb
-        
-        # Tạo biểu đồ line cho P/B
-        base_pb = alt.Chart(chart_data_with_mean).encode(
-            x=alt.X('time_label:N', axis=alt.Axis(title='Kỳ báo cáo', labelAngle=-45))
-        )
-        
-        # Đường P/B thực tế
-        line_pb = base_pb.mark_line(point=True, color='#A23B72', strokeWidth=2).encode(
-            y=alt.Y('P/B:Q', title='P/B', scale=alt.Scale(zero=False)),
-            tooltip=[
-                alt.Tooltip('time_label:N', title='Kỳ'),
-                alt.Tooltip('P/B:Q', title='P/B', format='.2f')
-            ]
-        )
-        
-        # Đường trung bình
-        mean_line_pb = base_pb.mark_line(strokeDash=[5, 5], color='red', strokeWidth=2).encode(
-            y=alt.Y('P/B Mean:Q'),
-            tooltip=[alt.Tooltip('P/B Mean:Q', title='TB lịch sử', format='.2f')]
-        )
-        
-        # Vùng fill
-        area_pb = base_pb.mark_area(opacity=0.3, color='#A23B72').encode(
-            y=alt.Y('P/B:Q')
-        )
-        
-        # Kết hợp các layer
-        chart_pb = (area_pb + line_pb + mean_line_pb).properties(
-            height=300
-        )
-        
-        st.altair_chart(chart_pb, use_container_width=True)
-        
-        # Hiển thị thống kê P/B
-        pb_deviation = ((stats['pb']['current'] - mean_pb) / mean_pb) * 100
-        
-        st.markdown(f"""
-        **Thống kê P/B:**
-        - Hiện tại: **{stats['pb']['current']:.2f}**
-        - Trung bình: {mean_pb:.2f}
-        - Cao nhất: {stats['pb']['max']:.2f}
-        - Thấp nhất: {stats['pb']['min']:.2f}
-        """)
-        
-        if pb_deviation > 10:
-            st.warning(f"⚠️ Cao hơn TB {pb_deviation:.1f}% - Có thể định giá cao")
-        elif pb_deviation < -10:
-            st.success(f"✓ Thấp hơn TB {abs(pb_deviation):.1f}% - Có thể định giá thấp")
-        else:
-            st.info(f"→ Gần mức TB ({pb_deviation:+.1f}%)")
-    pass
+
+
+
+
 
 def display_company_estimations(symbol):
     estimations = get_company_estimations(symbol)
@@ -719,121 +195,10 @@ def display_company_estimations(symbol):
             """
             st.markdown(markdown_table, unsafe_allow_html=True)
         else:
-            st.write(f"Không tìm thấy dữ liệu định giá cho mã chứng khoán: {symbol}")
+            st.write(
+                f"Không tìm thấy dữ liệu định giá cho mã chứng khoán: {symbol}")
         pass
 
-
-def display_rsi_14_chart(rsi_data, symbol):
-    """Hiển thị biểu đồ RSI 14 ngày của cổ phiếu"""
-    try:
-        # st.write("RSI 14 ngày")
-        if rsi_data is None or rsi_data.empty:
-            st.warning(f"Không thể lấy dữ liệu RSI cho mã {symbol}")
-            return
-        
-        # Tạo DataFrame cho biểu đồ
-        # Kiểm tra xem có cột 'time' không, nếu không thì dùng index
-        if 'time' in rsi_data.columns:
-            time_labels = rsi_data['time'].astype(str).values
-        elif hasattr(rsi_data.index, 'strftime'):
-            # Index là DatetimeIndex
-            time_labels = rsi_data.index.strftime('%Y-%m-%d').values
-        else:
-            # Index là RangeIndex hoặc kiểu khác, tạo label đơn giản
-            time_labels = [f"T{i+1}" for i in range(len(rsi_data))]
-        
-        chart_data = pd.DataFrame({
-            'index': range(len(rsi_data)),
-            'RSI': rsi_data['rsi'].values,
-            'time': time_labels,
-            'oversold': 30,
-            'overbought': 70
-        })
-        
-        # Loại bỏ các giá trị NaN
-        chart_data = chart_data.dropna()
-        
-        if chart_data.empty:
-            st.warning(f"Không có dữ liệu RSI hợp lệ cho mã {symbol}")
-            return
-        
-        # Tạo đường RSI chính
-        line_rsi = alt.Chart(chart_data).mark_line(point=True, color='#2E86AB', strokeWidth=2).encode(
-            # x=alt.X('index:O', axis=alt.Axis(title='Ngày', labelAngle=0)),  # Hiển thị trục X
-            x=alt.X('index:O', axis=None),  # Ẩn trục X
-            y=alt.Y('RSI:Q', axis=alt.Axis(title='RSI'), scale=alt.Scale(domain=[20, 90])),  # Hiển thị trục Y
-            tooltip=[
-                alt.Tooltip('time:N', title='Ngày'),
-                alt.Tooltip('RSI:Q', title='RSI', format='.2f')
-            ]
-        )
-        
-        # # Lấy giá trị RSI cuối cùng
-        # last_rsi = chart_data['RSI'].iloc[-1]
-        # last_index = chart_data['index'].iloc[-1]
-        
-        # # Xác định màu cho text dựa trên giá trị RSI
-        # if last_rsi < 30:
-        #     text_color = 'red'
-        # elif last_rsi > 70:
-        #     text_color = 'purple'
-        # else:
-        #     text_color = 'green'
-        
-        # # Tạo text annotation cho giá trị RSI cuối cùng
-        # last_point_data = pd.DataFrame({
-        #     'index': [last_index],
-        #     'RSI': [last_rsi],
-        #     'text': [f'{last_rsi:.2f}']
-        # })
-        
-        # text_annotation = alt.Chart(last_point_data).mark_text(
-        #     align='left',
-        #     # dx=5,  # Offset về bên phải
-        #     # dy=-5,  # Offset lên trên một chút
-        #     dx=-20,  # Offset về bên phải
-        #     dy=-20,  # Offset lên trên một chút
-        #     fontSize=14,
-        #     fontWeight='bold',
-        #     color=text_color
-        # ).encode(
-        #     x=alt.X('index:O'),
-        #     y=alt.Y('RSI:Q'),
-        #     text='text:N'
-        # )
-        
-        # Tạo đường mức 30 (oversold)
-        oversold_line = alt.Chart(chart_data).mark_line(
-            strokeDash=[5, 5], 
-            color='red', 
-            strokeWidth=2
-        ).encode(
-            x=alt.X('index:O', axis=None),
-            y='oversold:Q'
-        )
-        
-        # Tạo đường mức 70 (overbought)
-        overbought_line = alt.Chart(chart_data).mark_line(
-            strokeDash=[5, 5], 
-            color='purple', 
-            strokeWidth=2
-        ).encode(
-            x=alt.X('index:O', axis=None),
-            y='overbought:Q'
-        )
-        
-        # Kết hợp các layer (thêm text_annotation)
-        # chart = (line_rsi + oversold_line + overbought_line + text_annotation).properties(
-        chart = (line_rsi + oversold_line + overbought_line).properties(
-            title='RSI 14 ngày',
-            height=200
-        )
-        
-        st.altair_chart(chart, use_container_width=True)
-        
-    except Exception as e:
-        logger.exception(f"Lỗi khi hiển thị biểu đồ RSI cho {symbol}: {e}")
-        st.error(f"Lỗi khi hiển thị biểu đồ RSI: {str(e)}")
 
 # -----------------------------------------------------------------------------
 # Declare some useful functions.
@@ -854,31 +219,16 @@ def display_rsi_14_chart(rsi_data, symbol):
 # ''
 # # ''
 
-def display_gdnn_and_rsi_chart(symbol):
-    foreigner_trading = get_forigener_trading_trend(symbol)
-    # Lấy dữ liệu RSI 30 ngày gần nhất
-    rsi_data = get_rsi_history(symbol)
-    chart_col1, chart_col2 = st.columns(2)
-    with chart_col1:
-        display_forigener_trading_trend_chart(foreigner_trading, symbol)
-
-    with chart_col2:
-        display_rsi_14_chart(rsi_data, symbol)
-
 
 def show_report_config_page():
     left_col, right_col = st.columns([1, 1])
 
     with left_col:
-        # f'''
-        # for debugging purpose, display main_data:
-        # {main_data}
-        # '''
         col1, col2 = st.columns([2, 5])
         with col1:
 
             symbol = st.text_input("Nhập mã chứng khoán (ví dụ: FPT):",
-                                "FPT", key="symbol_input", on_change=clear_filter_date_report)
+                                   "FPT", key="symbol_input", on_change=clear_filter_date_report)
             main_data = get_main_stock_data(symbol)
             display_main_stock_data(main_data)
             display_update_price_config_button(main_data, symbol)
@@ -890,7 +240,7 @@ def show_report_config_page():
             display_gdnn_and_rsi_chart(symbol)
             '###### Lịch sử trả cổ tức'
             display_dividend_payment_history_table(symbol)
-            
+
     with right_col:
         if symbol:
             display_report_table(symbol)
