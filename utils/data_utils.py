@@ -48,7 +48,7 @@ def get_report_by_symbol(symbol: str):
     return reports
 
 
-get_report_by_symbol('FPT')
+# get_report_by_symbol('FPT')
 
 
 def get_main_stock_data(symbol: str):
@@ -95,6 +95,7 @@ def get_main_stock_data(symbol: str):
     # Example output structure: {'price': 88100, 'rsi_14': 32.5, 'high': 120.0, 'low': 90.0, 'gap': 36.20885357548242, 'total': 5055, 'cost_price': 108560.8}
     return data
 
+# print(get_main_stock_data('FPT'))
 
 def get_doanh_thu_loi_nhuan_quy(symbol: str):
     doanh_thu_sql = f"""

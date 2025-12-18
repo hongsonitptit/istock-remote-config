@@ -4,6 +4,8 @@ from tcbs import get_token, tcbs_son
 from datetime import datetime
 from logger import default_logger as logger
 from statistics import median
+import pandas as pd
+from typing import Tuple
 
 
 def get_dividend_payment_histories(symbol, page=0, size=20):
@@ -46,6 +48,33 @@ def get_dividend_payment_histories(symbol, page=0, size=20):
         })
 
     return result
+
+
+def get_finance_history(symbol: str) -> pd.DataFrame:
+    url = f"https://apiextaws.tcbs.com.vn/tcanalysis/v1/finance/{symbol.upper()}/financialratio?yearly=0&isAll=true"
+
+    payload = {}
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:144.0) Gecko/20100101 Firefox/144.0',
+        'Accept': 'application/json',
+        'Accept-Language': 'vi',
+        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Referer': 'https://tcinvest.tcbs.com.vn/',
+        'Content-Type': 'application/json',
+        'Origin': 'https://tcinvest.tcbs.com.vn',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-site',
+        'Authorization': f'Bearer {get_token(tcbs_son)}',
+        'Connection': 'keep-alive'
+    }
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+    data = json.loads(response.text)
+    result = pd.DataFrame(data)
+    return result
+
+print(get_finance_history('FPT')['bookValuePerShare'])
 
 
 def get_list_similar_company(symbol: str) -> list:
@@ -103,7 +132,6 @@ def get_avg_pe_pb_industry(symbol: str) -> dict:
     response = requests.request("POST", url, headers=headers, data=payload)
 
     data = json.loads(response.text)
-    
 
     avg_pe = median([item['peRatio'] for item in data['data']])
     avg_pb = median([item['pbRatio'] for item in data['data']])
@@ -156,8 +184,6 @@ def get_dividend_payment_histories_2(symbol: str) -> list:
     except Exception as e:
         logger.exception(f"Error getting dividend payment histories: {e}")
         return []
-    
-    
 
 
 # logger.info(get_list_similar_company("MSN"))
