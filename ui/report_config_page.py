@@ -229,6 +229,7 @@ def show_report_config_page():
 
             symbol = st.text_input("Nhập mã chứng khoán (ví dụ: FPT):",
                                    "FPT", key="symbol_input", on_change=clear_filter_date_report)
+            symbol = symbol.upper().strip()
             main_data = get_main_stock_data(symbol)
             display_main_stock_data(main_data)
             display_update_price_config_button(main_data, symbol)
