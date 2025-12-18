@@ -11,6 +11,15 @@ st.set_page_config(
     layout='wide'
 )
 
+st.markdown("""
+    <style>
+        .block-container {
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
 # -----------------------------------------------------------------------------
 # Declare some useful functions.
 
