@@ -1,12 +1,13 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+from logger import default_logger as logger
 from utils.data_utils import get_report_by_symbol, update_report, delete_report
 from utils.redis_utils import REPORT_LINK_BLACKLIST_KEY, set_hset
 
 def display_report_table(symbol):
     reports_data = get_report_by_symbol(symbol)
-    # print(reports_data)
+    # logger.debug(reports_data)
     if reports_data:
         col_report_1, col_report_2 = st.columns([1, 3])
         col_report_2 = col_report_2.container(
@@ -78,8 +79,8 @@ def display_report_table(symbol):
         # Convert report_date to string
         report_table['report_date'] = report_table['report_date'].apply(str)
 
-        # print(report_table.columns)
-        # print(report_table)
+        # logger.debug(report_table.columns)
+        # logger.debug(report_table)
 
         # Save a copy of the original table for comparison
         original_report_table = report_table.copy()

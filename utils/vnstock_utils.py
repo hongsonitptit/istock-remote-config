@@ -131,7 +131,7 @@ def get_company_info(symbol: str) -> dict:
         industry_list = list(set([info[col] for col in company_info.columns.tolist() if col.startswith('icb_')]))
         industry = ", ".join(industry_list)
 
-        print("\n\nĐang lấy dữ liệu giao dịch 20 phiên gần nhất...")
+        logger.info("Đang lấy dữ liệu giao dịch 20 phiên gần nhất...")
 
         # Tính ngày bắt đầu (lấy thêm 30 ngày để đảm bảo có đủ 20 phiên giao dịch)
         end_date = datetime.now().strftime('%Y-%m-%d')
@@ -231,7 +231,7 @@ def get_list_rsi_14(symbol: str, days: int = 30, rsi_period: int = 14):
     start_str = start_date.strftime('%Y-%m-%d')
     end_str = end_date.strftime('%Y-%m-%d')
     
-    print(f"📊 Đang lấy dữ liệu cổ phiếu {symbol} từ {start_str} đến {end_str}...")
+    logger.info(f"📊 Đang lấy dữ liệu cổ phiếu {symbol} từ {start_str} đến {end_str}...")
     
     # Khởi tạo Vnstock và lấy dữ liệu
     # Thử TCBS trước, nếu lỗi thì dùng VCI
@@ -239,14 +239,14 @@ def get_list_rsi_14(symbol: str, days: int = 30, rsi_period: int = 14):
         stock = Vnstock().stock(symbol=symbol, source='TCBS')
         df = stock.quote.history(start=start_str, end=end_str, interval='1D')
     except Exception as e:
-        print(f"⚠️  TCBS khong ho tro ma {symbol}, thu dung VCI...")
+        logger.warning(f"⚠️  TCBS khong ho tro ma {symbol}, thu dung VCI...")
         stock = Vnstock().stock(symbol=symbol, source='VCI')
         df = stock.quote.history(start=start_str, end=end_str, interval='1D')
     
     if df.empty:
         raise ValueError(f"Không thể lấy dữ liệu cho mã {symbol}")
     
-    print(f"✅ Đã lấy {len(df)} phiên giao dịch")
+    logger.info(f"✅ Đã lấy {len(df)} phiên giao dịch")
     
     # Tính RSI
     df['rsi'] = calculate_rsi_14(df, period=rsi_period)
@@ -275,5 +275,5 @@ if __name__ == "__main__":
     # Test với mã FPT
     result = get_company_info("FPT")
     if result:
-        print("\n=== Thông tin cổ phiếu ===")
-        print(result)
+        logger.info("=== Thông tin cổ phiếu ===")
+        logger.info(result)

@@ -74,7 +74,7 @@ def get_finance_history(symbol: str) -> pd.DataFrame:
     result = pd.DataFrame(data)
     return result
 
-print(get_finance_history('FPT')['bookValuePerShare'])
+# logger.info(get_finance_history('FPT')['bookValuePerShare'])
 
 
 def get_list_similar_company(symbol: str) -> list:

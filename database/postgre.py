@@ -1,4 +1,5 @@
 from typing import Dict, List
+from logger import default_logger as logger
 import sqlalchemy as db
 from sqlalchemy.engine import ResultProxy
 from sqlalchemy.orm import Session
@@ -23,7 +24,7 @@ def singleton(cls):
 class PostgreDatabase():
     def __init__(self):
         self.engine = PostgreEngineFactory.get_engine(COCK_ENGINE)
-        # print("DB Engine created")
+        # logger.debug("DB Engine created")
 
     def get_session(self) -> Session:
         return Session(bind=self.engine.connect())
