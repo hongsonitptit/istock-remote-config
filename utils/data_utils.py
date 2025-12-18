@@ -59,6 +59,7 @@ def get_main_stock_data(symbol: str):
     data['avg_trading_volume'] = company_info['avg_trading_volume']
     data['website'] = company_info['website']
     data['exchange'] = company_info['exchange']
+    data['symbol'] = symbol.upper()
     price_rsi_sql = f"""
     select price::float/1000 price, rsi as rsi_14, change_percent from current_price cp  
     where cp.symbol = '{symbol.upper()}'

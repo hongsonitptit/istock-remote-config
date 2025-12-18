@@ -85,6 +85,9 @@ def display_main_stock_data(main_data):
     | Quyết định | {"N/A" if main_data.get('trend') is None else main_data.get('trend')} |
     """
     st.markdown(markdown_table, unsafe_allow_html=True)
+
+    simplize_link = f"https://simplize.vn/co-phieu/{main_data['symbol']}"
+
     # RẤT QUAN TRỌNG: Thêm tham số unsafe_allow_html=True để cho phép HTML/Màu sắc
-    st.markdown(f"<small><b>{main_data['name']} - {main_data['exchange']}</b></small></br><small><i>{main_data['industry']}</i></small></br><small><href target='{main_data['website']}'>{main_data['website']}</href></small>", unsafe_allow_html=True)
+    st.markdown(f"<small><b><a href='{main_data['website']}' target='_blank'>{main_data['name']} - {main_data['exchange']}</a> <a href='{simplize_link}' target='_blank' style='color: purple;'>(Simplize)</a></b></small></br><small><i>{main_data['industry']}</i></small>", unsafe_allow_html=True)
     pass
