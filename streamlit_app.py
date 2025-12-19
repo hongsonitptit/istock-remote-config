@@ -18,6 +18,11 @@ st.markdown("""
             padding-right: 20px;
             padding-top: 0px;
         }
+        /* Hides the "Deploy" button */
+        .stAppHeader {
+            display: none;
+            height: 0px;
+        }
     </style>
     """, unsafe_allow_html=True)
 
