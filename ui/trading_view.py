@@ -146,8 +146,8 @@ def display_trading_view(symbol):
     # Tạo màu cho nến và volume
     df['color'] = np.where(df['open'] > df['close'], COLOR_BEAR, COLOR_BULL)
 
-    # lấy ra 60 ngày dữ liệu cuối cùng
-    df = df.tail(60)
+    # lấy ra 90 ngày dữ liệu cuối cùng
+    df = df.tail(90)
 
     # Chuyển đổi sang JSON
     candles = json.loads(df[['time', 'open', 'high', 'low', 'close']].to_json(orient="records"))
