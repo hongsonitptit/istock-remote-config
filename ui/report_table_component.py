@@ -79,8 +79,11 @@ def display_report_table(symbol):
             if col in report_table.columns:
                 report_table[col] = report_table[col].apply(str)
 
+        # đổi cột report_date thành ngày dạng string YYYY-MM-DD 
+        report_table['report_date'] = pd.to_datetime(report_table['report_date']).dt.strftime('%Y-%m-%d')
+
         # Convert report_date to string
-        report_table['report_date'] = report_table['report_date'].apply(str)
+        # report_table['report_date'] = report_table['report_date'].apply(str)
 
         # logger.debug(report_table.columns)
         # logger.debug(report_table)

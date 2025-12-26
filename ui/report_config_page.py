@@ -23,6 +23,8 @@ from logger import default_logger as logger
 
 def clear_filter_date_report():
     st.session_state["filter_date_report"] = ""
+    if "last_dividend_event_time" in st.session_state:
+        del st.session_state["last_dividend_event_time"]
 
 
 def save_report_to_database(symbol, source, report_date, gia_muc_tieu, doanh_thu, loi_nhuan_sau_thue, link):
