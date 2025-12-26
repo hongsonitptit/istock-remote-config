@@ -119,8 +119,8 @@ def parse_eps_financial_data(df, source='TCBS'):
         
     return eps_map
 
-def calculate_pe_history(symbol) -> pd.DataFrame:
-    logger.info(f"Bắt đầu tính toán P/E lịch sử 10 năm cho mã {symbol}...")
+def calculate_valuation_history(symbol):
+    logger.info(f"Bắt đầu tính toán P/E và P/B lịch sử 10 năm cho mã {symbol}...")
     
     end_date = datetime.now()
     start_date = end_date - timedelta(days=10*365)
@@ -140,7 +140,7 @@ def calculate_pe_history(symbol) -> pd.DataFrame:
 
         if df_price is None or df_price.empty:
             logger.error("Không thể lấy dữ liệu giá từ cả VCI và TCBS.")
-            return
+            return None, None
 
         df_price['time'] = pd.to_datetime(df_price['time'])
         df_price = df_price.sort_values('time')
@@ -148,86 +148,95 @@ def calculate_pe_history(symbol) -> pd.DataFrame:
 
     except Exception as e:
         logger.error(f"Lỗi khi lấy dữ liệu giá: {e}")
-        return
+        return None, None
 
-    # 2. Lấy dữ liệu EPS (Ưu tiên VCI)
-    logger.info(f"- Đang tải dữ liệu tài chính (EPS)...")
+    # 2. Lấy dữ liệu TÀI CHÍNH (EPS và BVPS)
+    logger.info(f"- Đang tải dữ liệu tài chính (EPS và BVPS)...")
     eps_map = {}
+    bvps_map = {}
     
     try:
         logger.info("  -> Thử nguồn VCI...")
         stock_vci = Vnstock().stock(symbol=symbol, source='VCI')
         df_ratio_vci = stock_vci.finance.ratio(period='quarter', dropna=False, lang='vi')
         eps_map = parse_eps_financial_data(df_ratio_vci, source='VCI')
+        bvps_map = parse_bvps_financial_data(df_ratio_vci, source='VCI')
     except Exception as e:
         logger.error(f"  -> VCI lỗi: {e}")
     
-    if not eps_map:
+    if not eps_map or not bvps_map:
         try:
             logger.info("  -> Thử nguồn TCBS...")
             stock_tcbs = Vnstock().stock(symbol=symbol, source='TCBS')
             df_ratio_tcbs = stock_tcbs.finance.ratio(period='quarter', dropna=False)
-            eps_map = parse_eps_financial_data(df_ratio_tcbs, source='TCBS')
+            if not eps_map:
+                eps_map = parse_eps_financial_data(df_ratio_tcbs, source='TCBS')
+            if not bvps_map:
+                bvps_map = parse_bvps_financial_data(df_ratio_tcbs, source='TCBS')
         except Exception as e:
              logger.error(f"  -> TCBS lỗi: {e}")
 
-    if not eps_map:
-        logger.error("Không thể lấy dữ liệu EPS từ bất kỳ nguồn nào.")
-        return
+    if not eps_map and not bvps_map:
+        logger.error("Không thể lấy dữ liệu EPS và BVPS từ bất kỳ nguồn nào.")
+        return None, None
 
-    logger.info(f"  -> Tìm thấy dữ liệu EPS cho {len(eps_map)} quý.")
-
-    # 3. Tính toán P/E
-    pe_history = []
-    dates = []
-    prices = []
-    eps_history = []
+    # 3. Tính toán P/E và P/B
+    pe_history, pb_history = [], []
+    pe_dates, pb_dates = [], []
+    pe_prices, pb_prices = [], []
+    eps_ttm_list, bvps_list = [], []
     
-    logger.info("- Đang tính P/E...")
+    logger.info("- Đang tính toán chỉ số định giá...")
     for _, row in df_price.iterrows():
         current_date_obj = row['time']
         price = row['close']
         
-        # Nếu data trả về giá dạng nghìn đồng (ví dụ 26.5 thay vì 26500), cần nhân 1000
-        # HPG giá ~26000. Nếu row['close'] < 1000, chắc chắn là nghìn đồng.
-        if price < 500: # Threshold an toàn
+        # Normalize giá nếu cần (đơn vị nghìn đồng)
+        if price < 500:
             price = price * 1000
             
         report_year, report_quarter = get_latest_reported_quarter(current_date_obj)
+        
+        # Tính P/E (TTM EPS)
         quarters_to_sum = get_previous_quarters(report_year, report_quarter, 4)
-        
         ttm_eps = 0
-        missing_count = 0
-        
+        missing_eps = False
         for q_y, q_q in quarters_to_sum:
             val = eps_map.get((q_y, q_q))
             if val is None:
-                missing_count += 1
-            else:
-                ttm_eps += val
+                missing_eps = True
+                break
+            ttm_eps += val
         
-        if missing_count == 0 and ttm_eps > 0:
-            pe = price / ttm_eps
-            pe_history.append(pe)
-            dates.append(current_date_obj)
-            prices.append(price)
-            eps_history.append(ttm_eps)
-        else:
-            pass 
+        if not missing_eps and ttm_eps > 0:
+            pe_history.append(price / ttm_eps)
+            pe_dates.append(current_date_obj)
+            pe_prices.append(price)
+            eps_ttm_list.append(ttm_eps)
 
-    if not dates:
-        logger.warning("Không tính được P/E nào.")
-        return
+        # Tính P/B (Latest BVPS)
+        bvps = bvps_map.get((report_year, report_quarter))
+        if bvps and bvps > 0:
+            pb_history.append(price / bvps)
+            pb_dates.append(current_date_obj)
+            pb_prices.append(price)
+            bvps_list.append(bvps)
 
-    df_plot = pd.DataFrame({
-        'time': dates,
+    pe_df = pd.DataFrame({
+        'time': pd.to_datetime(pe_dates).strftime('%Y-%m-%d'),
         'pe': pe_history,
-        'price': prices,
-        'eps_ttm': eps_history
-    })
-    # convert time from timestamp to date string
-    df_plot['time'] = pd.to_datetime(df_plot['time']).dt.strftime('%Y-%m-%d')
-    return df_plot
+        'price': pe_prices,
+        'eps_ttm': eps_ttm_list
+    }) if pe_dates else pd.DataFrame()
+
+    pb_df = pd.DataFrame({
+        'time': pd.to_datetime(pb_dates).strftime('%Y-%m-%d'),
+        'pb': pb_history,
+        'price': pb_prices,
+        'bvps': bvps_list
+    }) if pb_dates else pd.DataFrame()
+
+    return pe_df, pb_df
 
 
 def parse_bvps_financial_data(df, source='TCBS'):
@@ -308,114 +317,13 @@ def parse_bvps_financial_data(df, source='TCBS'):
         
     return bvps_map
 
-def calculate_pb_history(symbol):
-    logger.info(f"Bắt đầu tính toán P/B lịch sử 5 năm cho mã {symbol}...")
-    
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=5*365)
-    
-    # 1. Lấy dữ liệu GIÁ (Ưu tiên VCI)
-    logger.info(f"- Đang tải dữ liệu giá từ {start_date.strftime('%Y-%m-%d')} đến {end_date.strftime('%Y-%m-%d')}...")
-    source_used = 'VCI'
-    try:
-        stock = Vnstock().stock(symbol=symbol, source='VCI')
-        df_price = stock.quote.history(start=start_date.strftime("%Y-%m-%d"), end=end_date.strftime("%Y-%m-%d"))
-        
-        if df_price is None or df_price.empty:
-            logger.info("VCI trả về rỗng, thử TCBS...")
-            stock = Vnstock().stock(symbol=symbol, source='TCBS')
-            df_price = stock.quote.history(start=start_date.strftime("%Y-%m-%d"), end=end_date.strftime("%Y-%m-%d"))
-            source_used = 'TCBS'
-
-        if df_price is None or df_price.empty:
-            logger.error("Không thể lấy dữ liệu giá từ cả VCI và TCBS.")
-            return
-
-        df_price['time'] = pd.to_datetime(df_price['time'])
-        df_price = df_price.sort_values('time')
-        logger.info(f"  -> Đã lấy {len(df_price)} dòng dữ liệu giá (Nguồn: {source_used})")
-
-    except Exception as e:
-        logger.error(f"Lỗi khi lấy dữ liệu giá: {e}")
-        return
-
-    # 2. Lấy dữ liệu BVPS (Ưu tiên VCI)
-    logger.info(f"- Đang tải dữ liệu tài chính (BVPS)...")
-    bvps_map = {}
-    
-    try:
-        logger.info("  -> Thử nguồn VCI...")
-        stock_vci = Vnstock().stock(symbol=symbol, source='VCI')
-        df_ratio_vci = stock_vci.finance.ratio(period='quarter', dropna=False, lang='vi')
-        bvps_map = parse_bvps_financial_data(df_ratio_vci, source='VCI')
-    except Exception as e:
-        logger.error(f"  -> VCI lỗi: {e}")
-    
-    if not bvps_map:
-        try:
-            logger.info("  -> Thử nguồn TCBS...")
-            stock_tcbs = Vnstock().stock(symbol=symbol, source='TCBS')
-            df_ratio_tcbs = stock_tcbs.finance.ratio(period='quarter', dropna=False)
-            bvps_map = parse_bvps_financial_data(df_ratio_tcbs, source='TCBS')
-        except Exception as e:
-             logger.error(f"  -> TCBS lỗi: {e}")
-
-    if not bvps_map:
-        logger.error("Không thể lấy dữ liệu BVPS từ bất kỳ nguồn nào.")
-        return
-
-    logger.info(f"  -> Tìm thấy dữ liệu BVPS cho {len(bvps_map)} quý.")
-
-    # 3. Tính toán P/B
-    pb_history = []
-    dates = []
-    prices = []
-    bvps_history = []
-    
-    logger.info("- Đang tính P/B...")
-    for _, row in df_price.iterrows():
-        current_date_obj = row['time']
-        price = row['close']
-        
-        # Nếu data trả về giá dạng nghìn đồng (ví dụ 26.5 thay vì 26500), cần nhân 1000
-        if price < 500: # Threshold an toàn
-            price = price * 1000
-            
-        report_year, report_quarter = get_latest_reported_quarter(current_date_obj)
-        
-        # Với P/B, chỉ cần lấy BVPS của quý gần nhất
-        bvps = bvps_map.get((report_year, report_quarter))
-        
-        if bvps and bvps > 0:
-            pb = price / bvps
-            pb_history.append(pb)
-            dates.append(current_date_obj)
-            prices.append(price)
-            bvps_history.append(bvps)
-        else:
-            pass 
-
-    if not dates:
-        logger.warning("Không tính được P/B nào.")
-        return
-
-    df_plot = pd.DataFrame({
-        'time': dates,
-        'pb': pb_history,
-        'price': prices,
-        'bvps': bvps_history
-    })
-    # convert time from timestamp to date string
-    df_plot['time'] = pd.to_datetime(df_plot['time']).dt.strftime('%Y-%m-%d')
-    return df_plot
 
 
 def display_summary_reports(symbol):
     """Hiển thị đồ thị lịch sử P/E và P/B của cổ phiếu"""
     # Thử tính P/E và P/B bằng thư viện vnstock
     if USE_VNSTOCK:
-        pe_df = calculate_pe_history(symbol)
-        pb_df = calculate_pb_history(symbol)
+        pe_df, pb_df = calculate_valuation_history(symbol)
     else:
         pe_df = None
         pb_df = None

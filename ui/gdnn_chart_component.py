@@ -100,8 +100,7 @@ def display_foreiger_room(symbol):
     start = datetime.now() - timedelta(days=60)
     end = datetime.now()
     foreigner_room = get_foreigner_room(symbol, start_date=start.strftime('%Y-%m-%d'), end_date=end.strftime('%Y-%m-%d'))
+    # đảo ngươc lại room NN để tính xu hướng mua / bán của khối ngoại 
     start_volume = foreigner_room[0]
-    print(foreigner_room)
     foreigner_room = [start_volume - x for x in foreigner_room]
-    print(foreigner_room)
     display_forigener_trading_trend_chart(foreigner_room, symbol)

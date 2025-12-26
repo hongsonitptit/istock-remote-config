@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 from logger import default_logger as logger
+from vnstock import Vnstock
 
 # Màu sắc
 COLOR_BULL = 'rgba(38,166,154,0.9)'  # #26a69a
@@ -93,10 +94,46 @@ def calculate_rsi_2(prices, period=14):
     return rsi
 
 
+def get_trading_view_data_by_vnstock(symbol: str, start_str: str, end_str: str):
+    """
+    Lấy dữ liệu giá cổ phiếu và tính RSI
+    
+    Args:
+        symbol (str): Mã cổ phiếu (VD: 'PC1', 'VCB', 'HPG')
+        start_str (str): Ngày bắt đầu (VD: '2024-01-01')
+        end_str (str): Ngày kết thúc (VD: '2024-12-31')
+    
+    Returns:
+        pd.DataFrame: DataFrame chứa dữ liệu giá
+    """
+    # Format ngày theo định dạng YYYY-MM-DD
+    logger.info(f"📊 Đang lấy dữ liệu cổ phiếu {symbol} từ {start_str} đến {end_str}...")
+    
+    # Khởi tạo Vnstock và lấy dữ liệu
+    # Thử TCBS trước, nếu lỗi thì dùng VCI
+    try:
+        stock = Vnstock().stock(symbol=symbol, source='TCBS')
+        df = stock.quote.history(start=start_str, end=end_str, interval='1D')
+    except Exception as e:
+        logger.warning(f"⚠️  TCBS khong ho tro ma {symbol}, thu dung VCI...")
+        stock = Vnstock().stock(symbol=symbol, source='VCI')
+        df = stock.quote.history(start=start_str, end=end_str, interval='1D')
+    
+    if df.empty:
+        logger.error(f"Không thể lấy dữ liệu cho mã {symbol}")
+        return None
+    
+    logger.info(f"✅ Đã lấy {len(df)} phiên giao dịch")
+
+    return df
+
+
 def display_trading_view(symbol):
     start = datetime.now() - timedelta(days=180)
     end = datetime.now()
-    df = get_trading_view_data(symbol, start.strftime('%Y-%m-%d'), end.strftime('%Y-%m-%d'))
+    df = get_trading_view_data_by_vnstock(symbol, start.strftime('%Y-%m-%d'), end.strftime('%Y-%m-%d'))
+    if df is None:
+        df = get_trading_view_data(symbol, start.strftime('%Y-%m-%d'), end.strftime('%Y-%m-%d'))
 
     # Tính RSI
     close_prices = df['close'].values

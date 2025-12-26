@@ -291,7 +291,7 @@ def get_stock_data_and_rsi(symbol: str, days: int = 30, rsi_period: int = 14):
 
     return df
 
-print(get_stock_data_and_rsi('FPT'))
+# print(get_stock_data_and_rsi('FPT'))
 
 
 def get_foreigner_room(symbol: str, start_date: str, end_date: str) -> list:
