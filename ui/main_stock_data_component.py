@@ -71,7 +71,7 @@ def display_main_stock_data(main_data):
             st.metric(label="Giá vốn", value=f"{cost_price:,}", delta=f"{pnl:.2f}%")
         else:
             st.metric(label="Giá vốn", value=f"{cost_price:,}")
-
+    # print(main_data)
     # Hiển thị bảng đã được tô màu
     markdown_table = f"""
     | Chỉ số | Giá trị |
@@ -81,6 +81,7 @@ def display_main_stock_data(main_data):
     | Giá mua | {"N/A" if main_data.get('low') is None else main_data.get('low')} |
     | Biên an toàn | {formatted_gap} % |
     | Tổng CP | {main_data.get('total', 0):,} |
+    | Bước đặt KL | {main_data.get('gap_volume', 0):,} |
     | Quyết định | {"N/A" if main_data.get('trend') is None else main_data.get('trend')} |
     """
     st.markdown(markdown_table, unsafe_allow_html=True)

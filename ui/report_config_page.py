@@ -42,10 +42,12 @@ def show_update_price_config_dialog(main_data, symbol):
         st.warning("RSI 14 <= 30 !")
     new_trend = st.text_input("Quyết định", value=main_data.get(
         'trend') or 'N/A', key="new_trend")
+    new_gap_volume = st.number_input("Bước đặt KL", value=int(main_data.get(
+        'gap_volume') or 0), key="new_gap_volume")
 
     if st.button("Update"):
         # Placeholder for saving to database
-        update_price_config(symbol, new_high, new_low, new_rsi_14, new_trend)
+        update_price_config(symbol, new_high, new_low, new_rsi_14, new_trend, new_gap_volume)
         st.success("Dữ liệu đã được lưu (placeholder)")
         st.rerun()  # Refresh the app to show updated data
     pass

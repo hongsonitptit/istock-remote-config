@@ -74,7 +74,7 @@ def get_main_stock_data(symbol: str):
     data['total'] = 0
     data['cost_price'] = 0.0
     price_config_sql = f"""
-    select high, low, (high/(cp.price::float/1000)-1)*100 as gap, trend from price_config pc
+    select high, low, (high/(cp.price::float/1000)-1)*100 as gap, trend, gap_volume from price_config pc
     inner join current_price cp 
     on pc.symbol = cp.symbol
     where cp.symbol = '{symbol.upper()}'   
@@ -84,6 +84,7 @@ def get_main_stock_data(symbol: str):
     data['low'] = 0.0
     data['gap'] = 0.0
     data['trend'] = 'N/A'
+    data['gap_volume'] = 0
     queries = [price_rsi_sql,
                rsi_sql,
                price_config_sql,
@@ -199,10 +200,10 @@ def update_report(report_id, source, report_date, gia_muc_tieu, doanh_thu, loi_n
     logger.info(f"Report updated with id: {report_id}")
 
 
-def update_price_config(symbol, high, low, rsi, trend):
+def update_price_config(symbol, high, low, rsi, trend, gap_volume):
     update_sql = f"""
     UPDATE price_config
-    SET high = {high}, low = {low}, rsi_14 = {rsi}, trend = '{trend}'
+    SET high = {high}, low = {low}, rsi_14 = {rsi}, trend = '{trend}', gap_volume = {gap_volume}
     WHERE symbol = '{symbol.upper()}';
     """
     db_conn.crud_query(update_sql)
