@@ -6,6 +6,9 @@ from utils.data_utils import get_report_by_symbol, update_report, delete_report
 from utils.redis_utils import REPORT_LINK_BLACKLIST_KEY, set_hset
 
 def display_report_table(symbol):
+    if len(symbol) > 3:
+        # skip this chart for ETF
+        return
     reports_data = get_report_by_symbol(symbol)
     # logger.debug(reports_data)
     if reports_data:

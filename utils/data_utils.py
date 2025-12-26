@@ -164,7 +164,7 @@ def get_doanh_thu_loi_nhuan_nam(symbol: str):
     return data
 
 
-get_doanh_thu_loi_nhuan_nam("FPT")
+# get_doanh_thu_loi_nhuan_nam("FPT")
 
 
 def save_report(symbol, source, report_date, gia_muc_tieu, doanh_thu, loi_nhuan_sau_thue, link):

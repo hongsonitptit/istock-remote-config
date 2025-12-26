@@ -320,6 +320,9 @@ def parse_bvps_financial_data(df, source='TCBS'):
 
 
 def display_summary_reports(symbol):
+    if len(symbol) > 3:
+        # skip this chart for ETF
+        return
     """Hiển thị đồ thị lịch sử P/E và P/B của cổ phiếu"""
     # Thử tính P/E và P/B bằng thư viện vnstock
     if USE_VNSTOCK:

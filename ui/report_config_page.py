@@ -60,6 +60,9 @@ def display_update_price_config_button(main_data, symbol):
 
 
 def display_lnst_doanhthu_quy_chart(symbol):
+    if len(symbol) > 3:
+        # skip this chart for ETF
+        return
     st.write("Doanh thu và Lợi nhuận sau thuế ")
     data = get_doanh_thu_loi_nhuan_quy(symbol)
     chart_data = pd.DataFrame(
@@ -102,6 +105,9 @@ def display_lnst_doanhthu_quy_chart(symbol):
 
 def display_lnst_doanh_thu_nam_chart(symbol):
     # st.write("Doanh thu và Lợi nhuận sau thuế theo năm")
+    if len(symbol) > 3:
+        # skip this chart for ETF
+        return
     data = get_doanh_thu_loi_nhuan_nam(symbol)
     current_year = datetime.today().year
     columns = []
@@ -148,6 +154,9 @@ def display_lnst_doanh_thu_nam_chart(symbol):
 
 
 def display_dividend_payment_history_table(symbol):
+    if len(symbol) > 3:
+        # skip this chart for ETF
+        return
     from utils.api_utils import get_dividend_payment_histories_2
     dividend_data = get_dividend_payment_histories_2(symbol)
     if dividend_data:
@@ -186,6 +195,9 @@ def display_dividend_payment_history_table(symbol):
 
 
 def display_company_estimations(symbol):
+    if len(symbol) > 3:
+        # skip this chart for ETF
+        return
     estimations = get_company_estimations(symbol)
     with st.expander("Đánh giá 360", expanded=True):
         if estimations:
