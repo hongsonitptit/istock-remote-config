@@ -89,7 +89,7 @@ def display_forigener_trading_trend_chart(foreigner_trading, symbol):
     # Kết hợp các layer
     # chart = (line_chart + first_text + last_text).properties(
     chart = (line_chart).properties(
-        title='GDNN',
+        title=f'GDNN ({len(df)} ngày)',
         height=150
     )
     
@@ -97,7 +97,7 @@ def display_forigener_trading_trend_chart(foreigner_trading, symbol):
     pass
 
 def display_foreiger_room(symbol):
-    start = datetime.now() - timedelta(days=60)
+    start = datetime.now() - timedelta(days=90)
     end = datetime.now()
     foreigner_room = get_foreigner_room(symbol, start_date=start.strftime('%Y-%m-%d'), end_date=end.strftime('%Y-%m-%d'))
     # đảo ngươc lại room NN để tính xu hướng mua / bán của khối ngoại 

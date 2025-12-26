@@ -88,6 +88,21 @@ def display_report_table(symbol):
         # Save a copy of the original table for comparison
         original_report_table = report_table.copy()
 
+        # Define highlight function for reports after last dividend event
+        last_dividend_time = st.session_state.get("last_dividend_event_time")
+
+        def highlight_new_reports(row):
+            if last_dividend_time and row['id'] != "Mean":
+                try:
+                    r_date = pd.to_datetime(row['report_date'])
+                    l_date = pd.to_datetime(last_dividend_time)
+                    if r_date > l_date:
+                        # Light green highlight for new reports
+                        return ['background-color: #d1e7dd; color: #0f5132'] * len(row)
+                except Exception:
+                    pass
+            return [''] * len(row)
+
         # Initialize editor reset counter in session state
         if 'editor_reset_counter' not in st.session_state:
             st.session_state.editor_reset_counter = 0
@@ -95,7 +110,7 @@ def display_report_table(symbol):
         # display the table with checkbox column using data_editor
         # Use counter in key to force reset after save
         edited_df = st.data_editor(
-            report_table,
+            report_table.style.apply(highlight_new_reports, axis=1),
             column_config={
                 "Xóa": st.column_config.CheckboxColumn(
                     "Xóa",

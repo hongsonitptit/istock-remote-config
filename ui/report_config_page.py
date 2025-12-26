@@ -161,6 +161,9 @@ def display_dividend_payment_history_table(symbol):
     dividend_data = get_dividend_payment_histories_2(symbol)
     if dividend_data:
         df = pd.DataFrame(dividend_data)
+        # lưu lại sự kiện đầu tiên của dividend_data vào session state 
+        if "last_dividend_event_time" not in st.session_state:
+            st.session_state["last_dividend_event_time"] = dividend_data[0]['Thời gian']
 
         def highlight_rows(row):
             try:
@@ -220,24 +223,15 @@ def display_company_estimations(symbol):
 # -----------------------------------------------------------------------------
 # Declare some useful functions.
 
-# -----------------------------------------------------------------------------
-# Draw the actual page
-
-# Set the title that appears at the top of the page.
-# '''
-# # :earth_americas: GDP dashboard
-
-# Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-# notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-# But it's otherwise a great (and did I mention _free_?) source of data.
-# '''
-
-# # Add some spacing
-# ''
-# # ''
-
-
 def show_report_config_page():
+    # Initialize symbol from query params if not in session state
+    if "symbol_input" not in st.session_state:
+        st.session_state["symbol_input"] = st.query_params.get("symbol", "FPT")
+
+    def update_symbol_url():
+        st.query_params["symbol"] = st.session_state["symbol_input"].upper().strip()
+        clear_filter_date_report()
+
     left_col, right_col = st.columns([1, 1])
 
     with left_col:
@@ -245,7 +239,12 @@ def show_report_config_page():
         with col1:
 
             symbol = st.text_input("Nhập mã chứng khoán (ví dụ: FPT):",
-                                   "FPT", key="symbol_input", on_change=clear_filter_date_report)
+                                   key="symbol_input", on_change=update_symbol_url)
+            
+            # Ensure query params are set on first load
+            if "symbol" not in st.query_params:
+                st.query_params["symbol"] = symbol
+
             symbol = symbol.upper().strip()
             main_data = get_main_stock_data(symbol)
             display_main_stock_data(main_data)
