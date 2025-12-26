@@ -56,7 +56,6 @@ def get_main_stock_data(symbol: str):
     data = dict()
     data['name'] = company_info['name']
     data['industry'] = company_info['industry']
-    data['avg_trading_volume'] = company_info['avg_trading_volume']
     data['website'] = company_info['website']
     data['exchange'] = company_info['exchange']
     data['symbol'] = symbol.upper()

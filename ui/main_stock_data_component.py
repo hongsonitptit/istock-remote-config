@@ -76,12 +76,11 @@ def display_main_stock_data(main_data):
     markdown_table = f"""
     | Chỉ số | Giá trị |
     |--------|---------|
-    | RSI 14 ngày | {formatted_rsi} |
-    | Giá cao nhất | {"N/A" if main_data.get('high') is None else main_data.get('high')} |
-    | Giá thấp nhất | {"N/A" if main_data.get('low') is None else main_data.get('low')} |
-    | GAP | {formatted_gap} % |
-    | Tổng cổ phiếu | {main_data.get('total', 0):,} |
-    | KLGD TB 20 | {format_currency_short(main_data.get('avg_trading_volume', 0))} |
+    | RSI | {formatted_rsi} |
+    | Giá bán | {"N/A" if main_data.get('high') is None else main_data.get('high')} |
+    | Giá mua | {"N/A" if main_data.get('low') is None else main_data.get('low')} |
+    | Biên an toàn | {formatted_gap} % |
+    | Tổng CP | {main_data.get('total', 0):,} |
     | Quyết định | {"N/A" if main_data.get('trend') is None else main_data.get('trend')} |
     """
     st.markdown(markdown_table, unsafe_allow_html=True)

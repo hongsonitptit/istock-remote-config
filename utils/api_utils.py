@@ -6,48 +6,9 @@ from logger import default_logger as logger
 from statistics import median
 import pandas as pd
 from typing import Tuple
+from vnstock import Vnstock
 
-
-def get_dividend_payment_histories(symbol, page=0, size=20):
-    url = f"https://apiextaws.tcbs.com.vn/tcanalysis/v1/company/{symbol.upper()}/dividend-payment-histories?page={page}&size={size}"
-
-    payload = {}
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:144.0) Gecko/20100101 Firefox/144.0',
-        'Accept': 'application/json',
-        'Accept-Language': 'vi',
-        'Accept-Encoding': 'gzip, deflate, br, zstd',
-        'Referer': 'https://tcinvest.tcbs.com.vn/',
-        'Content-Type': 'application/json',
-        'Origin': 'https://tcinvest.tcbs.com.vn',
-        'Sec-Fetch-Dest': 'empty',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Site': 'same-site',
-        'Authorization': f'Bearer {get_token(tcbs_son)}',
-        'Connection': 'keep-alive'
-    }
-
-    response = requests.request("GET", url, headers=headers, data=payload)
-
-    data = json.loads(response.text)
-    current_year = datetime.now().year
-
-    result = []
-    for item in data['listDividendPaymentHis']:
-        exe_date = item['exerciseDate']
-        value = item['cashDividendPercentage']
-        method = item['issueMethod']
-        exe_date = datetime.strptime(exe_date, "%d/%m/%y")
-        exe_date_str = exe_date.strftime("%Y-%m-%d")
-        if exe_date.year < current_year - 1:
-            continue
-        result.append({
-            'Thời gian': exe_date_str,
-            'Giá trị %': f"{round(value*100,2)}",
-            'Loại': "Tiền mặt" if method == "cash" else "Cổ phiếu",
-        })
-
-    return result
+FIREANT_JWT_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6IkdYdExONzViZlZQakdvNERWdjV4QkRITHpnSSIsImtpZCI6IkdYdExONzViZlZQakdvNERWdjV4QkRITHpnSSJ9.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmZpcmVhbnQudm4iLCJhdWQiOiJodHRwczovL2FjY291bnRzLmZpcmVhbnQudm4vcmVzb3VyY2VzIiwiZXhwIjoxODg5NjIyNTMwLCJuYmYiOjE1ODk2MjI1MzAsImNsaWVudF9pZCI6ImZpcmVhbnQudHJhZGVzdGF0aW9uIiwic2NvcGUiOlsiYWNhZGVteS1yZWFkIiwiYWNhZGVteS13cml0ZSIsImFjY291bnRzLXJlYWQiLCJhY2NvdW50cy13cml0ZSIsImJsb2ctcmVhZCIsImNvbXBhbmllcy1yZWFkIiwiZmluYW5jZS1yZWFkIiwiaW5kaXZpZHVhbHMtcmVhZCIsImludmVzdG9wZWRpYS1yZWFkIiwib3JkZXJzLXJlYWQiLCJvcmRlcnMtd3JpdGUiLCJwb3N0cy1yZWFkIiwicG9zdHMtd3JpdGUiLCJzZWFyY2giLCJzeW1ib2xzLXJlYWQiLCJ1c2VyLWRhdGEtcmVhZCIsInVzZXItZGF0YS13cml0ZSIsInVzZXJzLXJlYWQiXSwianRpIjoiMjYxYTZhYWQ2MTQ5Njk1ZmJiYzcwODM5MjM0Njc1NWQifQ.dA5-HVzWv-BRfEiAd24uNBiBxASO-PAyWeWESovZm_hj4aXMAZA1-bWNZeXt88dqogo18AwpDQ-h6gefLPdZSFrG5umC1dVWaeYvUnGm62g4XS29fj6p01dhKNNqrsu5KrhnhdnKYVv9VdmbmqDfWR8wDgglk5cJFqalzq6dJWJInFQEPmUs9BW_Zs8tQDn-i5r4tYq2U8vCdqptXoM7YgPllXaPVDeccC9QNu2Xlp9WUvoROzoQXg25lFub1IYkTrM66gJ6t9fJRZToewCt495WNEOQFa_rwLCZ1QwzvL0iYkONHS_jZ0BOhBCdW9dWSawD6iF1SIQaFROvMDH1rg"
 
 
 def get_finance_history(symbol: str) -> pd.DataFrame:
@@ -186,7 +147,7 @@ def get_dividend_payment_histories_2(symbol: str) -> list:
         return []
 
 
-def get_volume_history(symbol: str, start: str, end: str) -> dict:
+def get_trading_view_data(symbol: str, start: str, end: str) -> pd.DataFrame:
     try:
         url = f"https://trade.pinetree.vn/stockHis.pt?symbol={symbol}&from={start}&to={end}&page=1&pageSize=1000"
 
@@ -206,15 +167,34 @@ def get_volume_history(symbol: str, start: str, end: str) -> dict:
         }
 
         response = requests.request("GET", url, headers=headers, data=payload)
-        result = {}
+        result = []
         data = json.loads(response.text)
         for item in data:
-            result[item['TradingDate']] = item['TotalVol']
+            date = item['TradingDate']
+            time = date.split("T")[0]
+            open = round(item['OpenPrice']/1000, 2)
+            high = round(item['HighestPrice']/1000, 2)
+            low = round(item['LowestPrice']/1000, 2)
+            close = round(item['ClosePrice']/1000, 2)
+            volume = item['TotalVol']
+            result.append({
+                'date': date,
+                'open': open,
+                'high': high,
+                'low': low,
+                'close': close,
+                'volume': volume,
+                'time': time,
+            })
+        result = pd.DataFrame(result)
+        result = result.sort_values(by='date', ascending=True)
         return result
     except Exception as e:
         logger.exception(f"Error getting volume history: {e}")
-        return {}
+        return pd.DataFrame()
 
+
+# get_trading_view_data("PC1", "2024-01-01", "2024-12-31")
 
 
 def get_company_info(symbol: str) -> dict:
@@ -248,18 +228,11 @@ def get_company_info(symbol: str) -> dict:
         else:
             industry = ', '.join([data['IndustryName'], data['SubIndustryName']])
 
-        # get avg trading volume of 20 session
-        start = (datetime.now() - timedelta(days=20)).strftime('%Y-%m-%d')
-        end = datetime.now().strftime('%Y-%m-%d')
-        volume_history = get_volume_history(symbol, start, end)
-        avg_volume_20 = sum(volume_history.values()) / len(volume_history)
-
         return {
             'name': company_name,
             'industry': industry,
             'website': website,
             'exchange': exchange,
-            'avg_trading_volume': avg_volume_20
         }
     except Exception as e:
         logger.exception(f"Lỗi khi lấy thông tin cổ phiếu cho {symbol}: {e}")
@@ -268,11 +241,90 @@ def get_company_info(symbol: str) -> dict:
             'industry': "",
             'website': "",
             'exchange': "",
-            'avg_trading_volume': None
         }
 
-logger.info(get_company_info("MSN"))
 
-# logger.info(get_list_similar_company("MSN"))
-# logger.info(get_avg_pe_pb_industry("MSN"))
-# logger.info(get_dividend_payment_histories_2("PC1"))
+def get_stock_data_and_rsi(symbol: str, days: int = 30, rsi_period: int = 14):
+    """
+    Lấy dữ liệu giá cổ phiếu và tính RSI
+    
+    Args:
+        symbol (str): Mã cổ phiếu (VD: 'PC1', 'VCB', 'HPG')
+        days (int): Số ngày lấy dữ liệu, mặc định 30 ngày
+        rsi_period (int): Chu kỳ tính RSI, mặc định 14
+    
+    Returns:
+        pd.DataFrame: DataFrame chứa dữ liệu giá và RSI
+    """
+    # Tính ngày bắt đầu và kết thúc
+    # Lấy thêm dữ liệu để tính RSI chính xác (cần ít nhất rsi_period + days)
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=180)
+    
+    # Format ngày theo định dạng YYYY-MM-DD
+    start_str = start_date.strftime('%Y-%m-%d')
+    end_str = end_date.strftime('%Y-%m-%d')
+    
+    logger.info(f"📊 Đang lấy dữ liệu cổ phiếu {symbol} từ {start_str} đến {end_str}...")
+    
+    # Khởi tạo Vnstock và lấy dữ liệu
+    # Thử TCBS trước, nếu lỗi thì dùng VCI
+    try:
+        stock = Vnstock().stock(symbol=symbol, source='TCBS')
+        df = stock.quote.history(start=start_str, end=end_str, interval='1D')
+    except Exception as e:
+        logger.warning(f"⚠️  TCBS khong ho tro ma {symbol}, thu dung VCI...")
+        stock = Vnstock().stock(symbol=symbol, source='VCI')
+        df = stock.quote.history(start=start_str, end=end_str, interval='1D')
+    
+    if df.empty:
+        logger.error(f"Không thể lấy dữ liệu cho mã {symbol}")
+        return None
+    
+    logger.info(f"✅ Đã lấy {len(df)} phiên giao dịch")
+
+    # Tính RSI
+    # df['rsi'] = calculate_rsi(df, period=rsi_period)
+
+    # Lấy chỉ số ngày gần đây nhất
+    df = df.tail(days)
+
+    return df
+
+print(get_stock_data_and_rsi('FPT'))
+
+
+def get_foreigner_room(symbol: str, start_date: str, end_date: str) -> list:
+    limit = 1000
+    offset = 0
+
+
+    payload = {}
+    headers = {
+        'Authorization': f'Bearer {FIREANT_JWT_TOKEN}'
+    }
+
+    data = []
+
+    while True:
+        url = f"https://restv2.fireant.vn/symbols/{symbol}/historical-quotes?startDate={start_date}&endDate={end_date}&offset={offset}&limit={limit}"
+        logger.info(f"Get data from {url}")
+        response = requests.request("GET", url, headers=headers, data=payload, verify=False)
+        records = json.loads(response.text)
+
+        if len(records) == 0:
+            break
+
+        data.extend(records)
+        offset += limit
+
+    data.reverse()
+
+    foreign_room = []
+
+    for item in data:
+        foreign_room.append(item['currentForeignRoom'])
+
+    return foreign_room
+
+# get_foreigner_room('FPT', '2025-12-01', '2025-12-25')

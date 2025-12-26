@@ -5,9 +5,10 @@ from pathlib import Path
 from database.postgre import PostgreDatabase
 from ui.ui_utils import highlight_rows
 from ui.main_stock_data_component import display_main_stock_data
-from ui.gdnn_rsi_chart_component import display_gdnn_and_rsi_chart
+from ui.gdnn_chart_component import display_foreiger_room
 from ui.report_table_component import display_report_table
 from ui.index_report_component import display_summary_reports
+from ui.trading_view import display_trading_view
 from utils.data_utils import (get_main_stock_data,
                               get_doanh_thu_loi_nhuan_quy, save_report,
                               get_doanh_thu_loi_nhuan_nam,
@@ -57,6 +58,7 @@ def display_update_price_config_button(main_data, symbol):
 
 
 def display_lnst_doanhthu_quy_chart(symbol):
+    st.write("Doanh thu và Lợi nhuận sau thuế ")
     data = get_doanh_thu_loi_nhuan_quy(symbol)
     chart_data = pd.DataFrame(
         {
@@ -76,8 +78,8 @@ def display_lnst_doanhthu_quy_chart(symbol):
         color=alt.Color("Loại giá trị:N", legend=None),
         tooltip=["Danh mục", "Loại giá trị", "Giá trị"]
     ).properties(
-        title='Doanh thu và Lợi nhuận sau thuế theo quý',
-        height=250
+        # title='Doanh thu và Lợi nhuận sau thuế theo quý',
+        height=200
     )
 
     text = bars.mark_text(
@@ -97,6 +99,7 @@ def display_lnst_doanhthu_quy_chart(symbol):
 
 
 def display_lnst_doanh_thu_nam_chart(symbol):
+    # st.write("Doanh thu và Lợi nhuận sau thuế theo năm")
     data = get_doanh_thu_loi_nhuan_nam(symbol)
     current_year = datetime.today().year
     columns = []
@@ -122,8 +125,8 @@ def display_lnst_doanh_thu_nam_chart(symbol):
         color=alt.Color("Loại giá trị:N", legend=None),
         tooltip=["Danh mục", "Loại giá trị", "Giá trị"]
     ).properties(
-        title='Doanh thu và Lợi nhuận sau thuế theo năm',
-        height=250
+        # title='Doanh thu và Lợi nhuận sau thuế theo năm',
+        height=200
     )
 
     text = bars.mark_text(
@@ -233,12 +236,14 @@ def show_report_config_page():
             main_data = get_main_stock_data(symbol)
             display_main_stock_data(main_data)
             display_update_price_config_button(main_data, symbol)
+            display_foreiger_room(symbol)
             display_company_estimations(symbol)
 
         with col2:
             display_lnst_doanhthu_quy_chart(symbol)
             display_lnst_doanh_thu_nam_chart(symbol)
-            display_gdnn_and_rsi_chart(symbol)
+            # display_gdnn_and_rsi_chart(symbol)
+            display_trading_view(symbol)
             '###### Lịch sử trả cổ tức'
             display_dividend_payment_history_table(symbol)
 
