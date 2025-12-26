@@ -187,7 +187,7 @@ def get_trading_view_data(symbol: str, start: str, end: str) -> pd.DataFrame:
                 'time': time,
             })
         result = pd.DataFrame(result)
-        result = result.sort_values(by='date', ascending=True)
+        result = result.sort_values(by='date', ascending=True, ignore_index=True)
         return result
     except Exception as e:
         logger.exception(f"Error getting volume history: {e}")

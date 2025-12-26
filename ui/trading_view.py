@@ -124,7 +124,8 @@ def get_trading_view_data_by_vnstock(symbol: str, start_str: str, end_str: str):
         return None
     
     logger.info(f"✅ Đã lấy {len(df)} phiên giao dịch")
-
+    # convert time column to string column
+    df['time'] = df['time'].astype(str)
     return df
 
 
@@ -140,6 +141,7 @@ def display_trading_view(symbol):
     # rsi_values = calculate_rsi_2(close_prices, period=14)
     rsi_values = calculate_rsi(df, period=14)
     df['rsi'] = rsi_values
+
 
     # Tạo màu cho nến và volume
     df['color'] = np.where(df['open'] > df['close'], COLOR_BEAR, COLOR_BULL)
