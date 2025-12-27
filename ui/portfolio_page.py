@@ -39,11 +39,16 @@ def show_portfolio_page():
     # print(transactions)
 
     transactions = get_deals()
+    # chỉ lấy dữ liệu có symbol = C47
+    # transactions = transactions[transactions['symbol'] == 'C47']
+    # chỉ lấy dữ liệu có ngay_mua >= '2025-01-01'
+    transactions = transactions[transactions['ngay_mua'] >= '2025-01-01']
+
     # sort dữ liệu transactions theo symbol và ngay_mua
     transactions = transactions.sort_values(by=['symbol', 'ngay_mua'])
-    transactions = transactions.head(45)
+    # transactions = transactions.head(45)
     
-    print(transactions)
+    # print(transactions)
 
     with st.expander("📝 Xem danh sách giao dịch mẫu (20 mã)"):
         st.dataframe(transactions, use_container_width=True)
@@ -166,32 +171,32 @@ def show_portfolio_page():
     # Tổng giá trị danh mục hàng ngày
     portfolio_total_value = weights.sum(axis=1)
     
-    # Lọc những ngày có giá trị đầu tư > 0
-    active_mask = portfolio_total_value > 0
-    active_dates = price_df.index[active_mask]
+    # Sử dụng toàn bộ dải ngày từ lần mua đầu tiên đến hiện tại để so sánh
+    comparison_dates = price_df.index
     
-    if len(active_dates) < 2:
+    if len(comparison_dates) < 2:
         st.info("Chưa đủ dữ liệu lịch sử để vẽ biểu đồ.")
         return
-
     # Chuẩn hóa trọng số để tính Daily Return của danh mục
+    # Khi portfolio_total_value = 0 (đã bán hết), normalized_weights sẽ là 0
     normalized_weights = weights.div(portfolio_total_value.replace(0, 1), axis=0)
     
     # Portfolio Daily Return = Sum of (Weight_i * Return_i)
+    # Nếu không nắm giữ gì, return sẽ bằng 0 (đường lợi nhuận đi ngang)
     port_daily_ret = (returns_df[normalized_weights.columns] * normalized_weights).sum(axis=1)
-    port_daily_ret = port_daily_ret[active_dates]
+    port_daily_ret = port_daily_ret[comparison_dates]
     
     # Cumulative Growth (Bắt đầu từ 100)
     port_cum_growth = (1 + port_daily_ret).cumprod()
     
     # VNINDEX Growth trong cùng khoảng thời gian
-    vni_daily_ret = returns_df.loc[active_dates, 'VNINDEX']
+    vni_daily_ret = returns_df.loc[comparison_dates, 'VNINDEX']
     vni_cum_growth = (1 + vni_daily_ret).cumprod()
     
     # Chuẩn bị dữ liệu cho Altair
     # (Trường hợp index đầu tiên, cumprod là 1.0, ta có thể prepend 1.0 nếu cần)
     chart_df = pd.DataFrame({
-        'Ngày': active_dates,
+        'Ngày': comparison_dates,
         'Danh mục': (port_cum_growth - 1) * 100,
         'VN-Index': (vni_cum_growth - 1) * 100
     })
