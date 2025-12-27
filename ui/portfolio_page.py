@@ -3,38 +3,48 @@ import pandas as pd
 import altair as alt
 from vnstock import Vnstock
 from datetime import datetime, timedelta
+from utils.data_utils import get_deals
 from logger import default_logger as logger
+import time
 
 def show_portfolio_page():
     st.title("🤖 Phân tích Hiệu quả Danh mục")
     
     # 1. Tạo tập dữ liệu mẫu (20 mẫu dữ liệu)
-    if 'portfolio_data' not in st.session_state:
-        st.session_state.portfolio_data = [
-            {'symbol': 'FPT', 'buy_date': '2024-01-05', 'sell_date': None, 'quantity': 1000},
-            {'symbol': 'VCB', 'buy_date': '2024-02-10', 'sell_date': '2024-06-15', 'quantity': 500},
-            {'symbol': 'HPG', 'buy_date': '2024-03-15', 'sell_date': None, 'quantity': 2000},
-            {'symbol': 'TCB', 'buy_date': '2024-01-20', 'sell_date': '2024-05-10', 'quantity': 1500},
-            {'symbol': 'MWG', 'buy_date': '2024-04-01', 'sell_date': None, 'quantity': 800},
-            {'symbol': 'VIC', 'buy_date': '2024-02-05', 'sell_date': None, 'quantity': 400},
-            {'symbol': 'VNM', 'buy_date': '2024-05-20', 'sell_date': None, 'quantity': 600},
-            {'symbol': 'DGC', 'buy_date': '2024-01-10', 'sell_date': '2024-08-01', 'quantity': 300},
-            {'symbol': 'SSI', 'buy_date': '2024-03-01', 'sell_date': None, 'quantity': 1200},
-            {'symbol': 'PVD', 'buy_date': '2024-04-15', 'sell_date': '2024-09-10', 'quantity': 1000},
-            {'symbol': 'STB', 'buy_date': '2024-02-15', 'sell_date': None, 'quantity': 2000},
-            {'symbol': 'MBB', 'buy_date': '2024-01-25', 'sell_date': None, 'quantity': 2500},
-            {'symbol': 'VRE', 'buy_date': '2024-05-05', 'sell_date': '2024-11-20', 'quantity': 700},
-            {'symbol': 'HDB', 'buy_date': '2024-06-01', 'sell_date': None, 'quantity': 1100},
-            {'symbol': 'GAS', 'buy_date': '2024-03-10', 'sell_date': None, 'quantity': 200},
-            {'symbol': 'PLX', 'buy_date': '2024-07-15', 'sell_date': '2024-12-01', 'quantity': 500},
-            {'symbol': 'POW', 'buy_date': '2024-01-15', 'sell_date': None, 'quantity': 1500},
-            {'symbol': 'MSN', 'buy_date': '2024-08-10', 'sell_date': None, 'quantity': 400},
-            {'symbol': 'SAB', 'buy_date': '2024-09-01', 'sell_date': None, 'quantity': 100},
-            {'symbol': 'VJC', 'buy_date': '2024-10-15', 'sell_date': None, 'quantity': 300},
-        ]
+    # if 'portfolio_data' not in st.session_state:
+    #     st.session_state.portfolio_data = [
+    #         {'symbol': 'FPT', 'ngay_mua': '2024-01-05', 'ngay_ban': None, 'khoi_luong': 1000, 'gia_mua': 95.5, 'gia_ban': None},
+    #         {'symbol': 'VCB', 'ngay_mua': '2024-02-10', 'ngay_ban': '2024-06-15', 'khoi_luong': 500, 'gia_mua': 88.2, 'gia_ban': 92.5},
+    #         {'symbol': 'HPG', 'ngay_mua': '2024-03-15', 'ngay_ban': None, 'khoi_luong': 2000, 'gia_mua': 28.5, 'gia_ban': None},
+    #         {'symbol': 'TCB', 'ngay_mua': '2024-01-20', 'ngay_ban': '2024-05-10', 'khoi_luong': 1500, 'gia_mua': 32.0, 'gia_ban': 45.5},
+    #         {'symbol': 'MWG', 'ngay_mua': '2024-04-01', 'ngay_ban': None, 'khoi_luong': 800, 'gia_mua': 42.0, 'gia_ban': None},
+    #         {'symbol': 'VIC', 'ngay_mua': '2024-02-05', 'ngay_ban': None, 'khoi_luong': 400, 'gia_mua': 45.0, 'gia_ban': None},
+    #         {'symbol': 'VNM', 'ngay_mua': '2024-05-20', 'ngay_ban': None, 'khoi_luong': 600, 'gia_mua': 68.0, 'gia_ban': None},
+    #         {'symbol': 'DGC', 'ngay_mua': '2024-01-10', 'ngay_ban': '2024-08-01', 'khoi_luong': 300, 'gia_mua': 90.0, 'gia_ban': 115.0},
+    #         {'symbol': 'SSI', 'ngay_mua': '2024-03-01', 'ngay_ban': None, 'khoi_luong': 1200, 'gia_mua': 33.0, 'gia_ban': None},
+    #         {'symbol': 'PVD', 'ngay_mua': '2024-04-15', 'ngay_ban': '2024-09-10', 'khoi_luong': 1000, 'gia_mua': 28.0, 'gia_ban': 31.5},
+    #         {'symbol': 'STB', 'ngay_mua': '2024-02-15', 'ngay_ban': None, 'khoi_luong': 2000, 'gia_mua': 30.5, 'gia_ban': None},
+    #         {'symbol': 'MBB', 'ngay_mua': '2024-01-25', 'ngay_ban': None, 'khoi_luong': 2500, 'gia_mua': 18.5, 'gia_ban': None},
+    #         {'symbol': 'VRE', 'ngay_mua': '2024-05-05', 'ngay_ban': '2024-11-20', 'khoi_luong': 700, 'gia_mua': 24.0, 'gia_ban': 18.5},
+    #         {'symbol': 'HDB', 'ngay_mua': '2024-06-01', 'ngay_ban': None, 'khoi_luong': 1100, 'gia_mua': 22.5, 'gia_ban': None},
+    #         {'symbol': 'GAS', 'ngay_mua': '2024-03-10', 'ngay_ban': None, 'khoi_luong': 200, 'gia_mua': 78.0, 'gia_ban': None},
+    #         {'symbol': 'PLX', 'ngay_mua': '2024-07-15', 'ngay_ban': '2024-12-01', 'khoi_luong': 500, 'gia_mua': 36.0, 'gia_ban': 39.0},
+    #         {'symbol': 'POW', 'ngay_mua': '2024-01-15', 'ngay_ban': None, 'khoi_luong': 1500, 'gia_mua': 11.2, 'gia_ban': None},
+    #         {'symbol': 'MSN', 'ngay_mua': '2024-08-10', 'ngay_ban': None, 'khoi_luong': 400, 'gia_mua': 72.0, 'gia_ban': None},
+    #         {'symbol': 'SAB', 'ngay_mua': '2024-09-01', 'ngay_ban': None, 'khoi_luong': 100, 'gia_mua': 65.0, 'gia_ban': None},
+    #         {'symbol': 'VJC', 'ngay_mua': '2024-10-15', 'ngay_ban': None, 'khoi_luong': 300, 'gia_mua': 105.0, 'gia_ban': None},
+    #     ]
     
-    transactions = pd.DataFrame(st.session_state.portfolio_data)
+    # transactions = pd.DataFrame(st.session_state.portfolio_data)
+    # print(transactions)
+
+    transactions = get_deals()
+    # sort dữ liệu transactions theo symbol và ngay_mua
+    transactions = transactions.sort_values(by=['symbol', 'ngay_mua'])
+    transactions = transactions.head(45)
     
+    print(transactions)
+
     with st.expander("📝 Xem danh sách giao dịch mẫu (20 mã)"):
         st.dataframe(transactions, use_container_width=True)
 
@@ -51,6 +61,7 @@ def show_portfolio_page():
         progress_bar = st.progress(0)
         for i, sym in enumerate(all_symbols):
             try:
+                time.sleep(1)
                 # Ưu tiên VCI vì dữ liệu chỉ số ổn định
                 source = 'VCI'
                 stock = vnstock_client.stock(symbol=sym, source=source)
@@ -69,15 +80,15 @@ def show_portfolio_page():
         progress_bar.empty()
         return market_data
 
-    min_buy_date = transactions['buy_date'].min()
-    market_prices = get_market_data(transactions['symbol'].unique(), min_buy_date)
+    min_ngay_mua = transactions['ngay_mua'].min()
+    market_prices = get_market_data(transactions['symbol'].unique(), min_ngay_mua)
     
     if 'VNINDEX' not in market_prices:
         st.error("❌ Không thể kết nối dữ liệu VN-Index. Vui lòng thử lại sau.")
         return
 
     # Chuẩn bị bảng giá hội tụ (aligned price table)
-    all_dates = pd.date_range(start=min_buy_date, end=datetime.now(), freq='D')
+    all_dates = pd.date_range(start=min_ngay_mua, end=datetime.now(), freq='D')
     price_df = pd.DataFrame(index=all_dates)
     for sym, p_series in market_prices.items():
         # Reindex và fill để có giá cho mọi ngày (kể cả cuối tuần)
@@ -92,29 +103,31 @@ def show_portfolio_page():
     portfolio_results = []
     for idx, row in transactions.iterrows():
         sym = row['symbol']
-        b_date = pd.to_datetime(row['buy_date'])
-        s_date = pd.to_datetime(row['sell_date']) if row['sell_date'] else None
-        qty = row['quantity']
+        qty = row['khoi_luong']
+        b_date = row['ngay_mua']
+        s_date = row['ngay_ban']
         
-        if sym not in price_df.columns:
-            continue
-            
-        # Lấy giá mua (gần nhất với ngày mua)
-        buy_price = price_df.loc[b_date, sym]
+        # 1. Lấy giá mua từ dữ liệu mẫu
+        gia_mua = row['gia_mua']
         
-        # Giá hiện tại hoặc giá bán
-        curr_date = s_date if s_date else price_df.index[-1]
-        exit_price = price_df.loc[curr_date, sym]
+        # 2. Lấy giá bán: Nếu có trong dữ liệu thì dùng, nếu ko (None) thì lấy giá hiện tại từ vnstock
+        exit_price = row['gia_ban']
+        if pd.isna(exit_price):
+            if sym in market_prices and not market_prices[sym].empty:
+                exit_price = market_prices[sym].iloc[-1]
+            else:
+                # Fallback nếu không có dữ liệu market
+                exit_price = gia_mua
         
-        profit_pct = (exit_price - buy_price) / buy_price * 100
+        profit_pct = (exit_price - gia_mua) / gia_mua * 100
         status = "Đã bán" if s_date else "Đang nắm giữ"
         
         portfolio_results.append({
             'Mã': sym,
-            'Ngày mua': row['buy_date'],
-            'Ngày bán': row['sell_date'] or 'N/A',
-            'Sổ lượng': qty,
-            'Giá mua': round(buy_price, 2),
+            'Ngày mua': b_date,
+            'Ngày bán': s_date or 'N/A',
+            'Số lượng': qty,
+            'Giá mua': round(gia_mua, 2),
             'Giá hiện tại/bán': round(exit_price, 2),
             'Lợi nhuận (%)': round(profit_pct, 2),
             'Trạng thái': status
@@ -140,9 +153,9 @@ def show_portfolio_page():
     weights = pd.DataFrame(0.0, index=price_df.index, columns=transactions['symbol'].unique())
     for idx, row in transactions.iterrows():
         sym = row['symbol']
-        b_date = pd.to_datetime(row['buy_date'])
-        s_date = pd.to_datetime(row['sell_date']) if row['sell_date'] else None
-        qty = row['quantity']
+        b_date = pd.to_datetime(row['ngay_mua'])
+        s_date = pd.to_datetime(row['ngay_ban']) if row['ngay_ban'] else None
+        qty = row['khoi_luong']
         
         mask = (price_df.index >= b_date)
         if s_date:

@@ -282,6 +282,16 @@ def get_rsi_history(symbol: str) -> pd.DataFrame:
     data = json.loads(rsi_data_str)
     return pd.DataFrame(data)
 
-# get_rsi_history('FPT')
+
+def get_deals() -> pd.DataFrame:
+    deals_sql = """
+    select * from deal
+    """
+    result = db_conn.raw_query(deals_sql)
+    if not result:
+        return pd.DataFrame()
+    return pd.DataFrame(result)
+
+# print(get_deals())
 
 # get_forigener_trading_trend('FPT')
