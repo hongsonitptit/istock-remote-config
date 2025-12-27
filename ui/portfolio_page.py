@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
+import json
 from vnstock import Vnstock
 from datetime import datetime, timedelta
 from utils.data_utils import get_deals
 from logger import default_logger as logger
+from streamlit_lightweight_charts import renderLightweightCharts
 import time
 
 @st.cache_data(ttl=3600)
@@ -41,75 +42,98 @@ def get_market_data(symbols, start_date):
     progress_bar.empty()
     return market_data
 
-def _draw_performance_chart(chart_df, chart_melted):
+def _draw_performance_chart(chart_df):
     """
-    Vẽ biểu đồ so sánh hiệu suất tích lũy của danh mục với VN-Index và VN30.
+    Vẽ biểu đồ so sánh hiệu suất tích lũy của danh mục với VN-Index và VN30 sử dụng Lightweight Charts.
     """
     st.write("### 📈 Biểu đồ so sánh Hiệu suất Tích lũy")
     
-    # 1. Tạo parameter để chọn ngày gần nhất khi di chuột (selectors)
-    hover_selection = alt.selection_point(
-        fields=['Ngày'],
-        nearest=True,
-        on='mouseover',
-        empty=False,
-        clear='mouseout'
-    )
+    # Chuẩn bị dữ liệu cho Lightweight Charts
+    df = chart_df.copy()
+    df['time'] = df['Ngày'].dt.strftime('%Y-%m-%d')
+    
+    # Chuyển đổi dữ liệu sang định dạng JSON mà Lightweight Charts yêu cầu
+    portfolio_data = json.loads(df[['time', 'Danh mục']].rename(columns={'Danh mục': 'value'}).to_json(orient="records"))
+    vni_data = json.loads(df[['time', 'VN-Index']].rename(columns={'VN-Index': 'value'}).to_json(orient="records"))
+    vn30_data = json.loads(df[['time', 'VN30']].rename(columns={'VN30': 'value'}).to_json(orient="records"))
 
-    # 2. Lớp chính: Biểu đồ đường
-    line_chart = alt.Chart(chart_melted).mark_line(strokeWidth=3, interpolate='monotone').encode(
-        x=alt.X('Ngày:T', axis=alt.Axis(title='Thời gian', format='%d/%m/%Y', labelAngle=-45)),
-        y=alt.Y('Tỉ suất lợi nhuận (%):Q', axis=alt.Axis(title='Lợi nhuận tích lũy (%)')),
-        color=alt.Color('Đối tượng:N', 
-                        scale=alt.Scale(range=['#36A2EB', '#FF6384', '#FFCE56']), 
-                        legend=alt.Legend(orient='top-left', title=None))
-    )
+    # Cấu hình biểu đồ
+    chart_options = {
+        "height": 450,
+        "layout": {
+            "background": {"type": "solid", "color": "#1e222d"},
+            "textColor": "#d1d4dc",
+        },
+        "grid": {
+            "vertLines": {"color": "rgba(42, 46, 57, 0.6)"},
+            "horzLines": {"color": "rgba(42, 46, 57, 0.6)"},
+        },
+        "timeScale": {
+            "borderColor": "rgba(197, 203, 206, 0.8)",
+            "timeVisible": True,
+            "secondsVisible": False,
+        },
+        "rightPriceScale": {
+            "borderColor": "rgba(197, 203, 206, 0.8)",
+        },
+        "crosshair": {
+            "mode": 0, # Normal mode
+        },
+    }
 
-    # 3. Lớp selectors: Các điểm tàng hình để bắt sự kiện chuột
-    selectors = alt.Chart(chart_melted).mark_point().encode(
-        x='Ngày:T',
-        opacity=alt.value(0),
-    ).add_params(hover_selection)
+    # Cấu hình các đường dữ liệu
+    series = [
+        {
+            "type": 'Line',
+            "data": portfolio_data,
+            "options": {
+                "color": '#36A2EB',
+                "lineWidth": 3,
+                "title": "Danh mục",
+            }
+        },
+        {
+            "type": 'Line',
+            "data": vni_data,
+            "options": {
+                "color": '#FF6384',
+                "lineWidth": 2,
+                "title": "VN-Index",
+            }
+        },
+        {
+            "type": 'Line',
+            "data": vn30_data,
+            "options": {
+                "color": '#FFCE56',
+                "lineWidth": 2,
+                "title": "VN30",
+            }
+        }
+    ]
 
-    # 4. Lớp points: Hiển thị điểm nút khi di chuột qua bộ chọn
-    points = line_chart.mark_point(size=60, filled=True).encode(
-        opacity=alt.condition(hover_selection, alt.value(1), alt.value(0))
-    )
+    # Hiển thị biểu đồ
+    renderLightweightCharts([
+        {
+            "chart": chart_options,
+            "series": series
+        }
+    ], 'performance_chart')
 
-    # 5. Lớp rules: Đường thẳng đứng (crosshair)
-    # Dùng wide dataframe (chart_df) để Tooltip hiển thị được tất cả giá trị cùng lúc
-    rules = alt.Chart(chart_df).mark_rule(color='#A9A9A9', strokeDash=[4, 4]).encode(
-        x='Ngày:T',
-        tooltip=[
-            alt.Tooltip('Ngày:T', title='Ngày', format='%d/%m/%Y'),
-            alt.Tooltip('Danh mục:Q', title='Lợi nhuận Danh mục (%)', format='.2f'),
-            alt.Tooltip('VN-Index:Q', title='Lợi nhuận VN-Index (%)', format='.2f'),
-            alt.Tooltip('VN30:Q', title='Lợi nhuận VN30 (%)', format='.2f'),
-        ],
-    ).transform_filter(hover_selection)
-
-    # Kết hợp các lớp lại với nhau
-    final_chart = alt.layer(
-        line_chart, selectors, points, rules
-    ).properties(
-        height=450,
-        title=alt.TitleParams(text="Hiệu suất Tích lũy so với Thị trường", anchor='start', fontSize=18)
-    ).interactive()
-
-    st.altair_chart(final_chart, use_container_width=True)
-
-def _display_portfolio_metrics(port_cum_growth, vni_cum_growth):
+def _display_portfolio_metrics(port_cum_growth, vni_cum_growth, vn30_cum_growth):
     """
     Hiển thị các thẻ chỉ số tóm tắt về lợi nhuận danh mục và VN-Index.
     """
     final_port_ret = (port_cum_growth.iloc[-1] - 1) * 100
     final_vni_ret = (vni_cum_growth.iloc[-1] - 1) * 100
+    final_vn30_ret = (vn30_cum_growth.iloc[-1] - 1) * 100
     alpha = final_port_ret - final_vni_ret
     
-    m1, m2, m3 = st.columns(3)
+    m1, m2, m3, m4 = st.columns(4)
     m1.metric("Lợi nhuận Danh mục", f"{final_port_ret:.2f}%", f"{final_port_ret:+.2f}%")
     m2.metric("Lợi nhuận VN-Index", f"{final_vni_ret:.2f}%", f"{final_vni_ret:+.2f}%")
-    m3.metric("Chênh lệch (Alpha)", f"{alpha:.2f}%", delta=round(alpha, 2), delta_color="normal")
+    m3.metric("Lợi nhuận VN30", f"{final_vn30_ret:.2f}%", f"{final_vn30_ret:+.2f}%")
+    m4.metric("Chênh lệch (Alpha)", f"{alpha:.2f}%", delta=round(alpha, 2), delta_color="normal")
     
     st.success(f"💡 Danh mục của bạn đang {'vượt trội' if alpha > 0 else 'kém hơn'} thị trường {abs(alpha):.2f}% kể từ khi bắt đầu đầu tư.")
 
@@ -232,14 +256,12 @@ def show_portfolio_page():
         'VN-Index': (vni_cum_growth - 1) * 100,
         'VN30': (vn30_cum_growth - 1) * 100
     })
-    chart_melted = chart_df.melt('Ngày', var_name='Đối tượng', value_name='Tỉ suất lợi nhuận (%)')
-
     # 5. Hiển thị Dashboard
     # Vẽ đồ thị
-    _draw_performance_chart(chart_df, chart_melted)
+    _draw_performance_chart(chart_df)
 
     # Hiển thị thẻ tóm tắt
-    _display_portfolio_metrics(port_cum_growth, vni_cum_growth)
+    _display_portfolio_metrics(port_cum_growth, vni_cum_growth, vn30_cum_growth)
 
     # Hiển thị bảng chi tiết
     _display_performance_table(portfolio_results)
