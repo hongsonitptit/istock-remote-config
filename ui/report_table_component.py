@@ -5,6 +5,7 @@ from logger import default_logger as logger
 from utils.data_utils import get_report_by_symbol, update_report, delete_report
 from utils.redis_utils import REPORT_LINK_BLACKLIST_KEY, set_hset
 
+@st.fragment # chỉ làm mới duy nhất vùng này khi có thay đổi
 def display_report_table(symbol):
     if len(symbol) > 3:
         # skip this chart for ETF
@@ -141,7 +142,7 @@ def display_report_table(symbol):
                 "report_date": st.column_config.TextColumn("Ngày báo cáo", help="Ngày phát hành báo cáo"),
             },
             hide_index=True,
-            # use_container_width=True,
+            # width='stretch',
             # Set max height to 800px to prevent excessively tall tables
             height=min(35 * len(report_table) + 35, 800),
             width='content',
@@ -214,7 +215,7 @@ def display_report_table(symbol):
                     st.info("Không có thay đổi nào để lưu")
 
         with col_btn_2:
-            if st.button("🚫 Blacklist & Xóa", type="secondary", use_container_width=True):
+            if st.button("🚫 Blacklist & Xóa", type="secondary", width='stretch'):
                 # Get selected rows (excluding the Mean row which is the last one)
                 selected_indices = edited_df[edited_df['Xóa']
                                              == True].index.tolist()

@@ -32,35 +32,6 @@ def save_report_to_database(symbol, source, report_date, gia_muc_tieu, doanh_thu
                 doanh_thu, loi_nhuan_sau_thue, link)
 
 
-@st.dialog("Update price config")
-def show_update_price_config_dialog(main_data, symbol):
-    new_high = st.number_input("High", min_value=0.0, value=float(
-        main_data.get('high') or 0), key="new_high")
-    new_low = st.number_input("Low", min_value=0.0, value=float(
-        main_data.get('low') or 0), key="new_low")
-    new_rsi_14 = st.number_input("RSI 14", value=float(main_data.get(
-        'rsi_14') or 0), min_value=0.0, max_value=100.0, format="%.2f", key="new_rsi_14")
-    if new_rsi_14 <= 30:
-        st.warning("RSI 14 <= 30 !")
-    new_trend = st.text_input("Quyết định", value=main_data.get(
-        'trend') or 'N/A', key="new_trend")
-    new_gap_volume = st.number_input("Bước đặt KL", value=int(main_data.get(
-        'gap_volume') or 0), key="new_gap_volume")
-
-    if st.button("Update"):
-        # Placeholder for saving to database
-        update_price_config(symbol, new_high, new_low, new_rsi_14, new_trend, new_gap_volume)
-        st.success("Dữ liệu đã được lưu (placeholder)")
-        st.rerun()  # Refresh the app to show updated data
-    pass
-
-
-def display_update_price_config_button(main_data, symbol):
-    if st.button('Update price config'):
-        show_update_price_config_dialog(main_data, symbol)
-    pass
-
-
 def display_lnst_doanhthu_quy_chart(symbol):
     if len(symbol) > 3:
         # skip this chart for ETF
@@ -187,7 +158,7 @@ def display_dividend_payment_history_table(symbol):
         st.dataframe(
             df.style.apply(highlight_rows, axis=1),
             hide_index=True,
-            # use_container_width=True,
+            # width='stretch',
             # Set max height to 800px to prevent excessively tall tables
             height=min(35 * len(df) + 35, 800)
         )
@@ -249,8 +220,7 @@ def show_report_config_page():
 
             symbol = symbol.upper().strip()
             main_data = get_main_stock_data(symbol)
-            display_main_stock_data(main_data)
-            display_update_price_config_button(main_data, symbol)
+            display_main_stock_data(main_data, symbol)
             display_foreiger_room(symbol)
             display_company_estimations(symbol)
 

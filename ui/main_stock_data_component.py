@@ -1,7 +1,8 @@
 import streamlit as st
 from utils.data_utils import format_currency_short
+from utils.data_utils import update_price_config
 
-def display_main_stock_data(main_data):
+def display_main_stock_data(main_data, symbol):
     # Lấy giá trị rsi_14, mặc định là 'N/A' nếu không có
     rsi_value = main_data.get('rsi_14')
     gap_value = main_data.get('gap', 'N/A')
@@ -90,4 +91,34 @@ def display_main_stock_data(main_data):
 
     # RẤT QUAN TRỌNG: Thêm tham số unsafe_allow_html=True để cho phép HTML/Màu sắc
     st.markdown(f"<small><b><a href='{main_data['website']}' target='_blank'>{main_data['name']} - {main_data['exchange']}</a> <a href='{simplize_link}' target='_blank' style='color: purple;'>(Simplize)</a></b></small></br><small><i>{main_data['industry']}</i></small>", unsafe_allow_html=True)
+
+    display_update_price_config_button(main_data, symbol)
+
+
+@st.dialog("Update price config")
+def show_update_price_config_dialog(main_data, symbol):
+    new_high = st.number_input("High", min_value=0.0, value=float(
+        main_data.get('high') or 0), key="new_high")
+    new_low = st.number_input("Low", min_value=0.0, value=float(
+        main_data.get('low') or 0), key="new_low")
+    new_rsi_14 = st.number_input("RSI 14", value=float(main_data.get(
+        'rsi_14') or 0), min_value=0.0, max_value=100.0, format="%.2f", key="new_rsi_14")
+    if new_rsi_14 <= 30:
+        st.warning("RSI 14 <= 30 !")
+    new_trend = st.text_input("Quyết định", value=main_data.get(
+        'trend') or 'N/A', key="new_trend")
+    new_gap_volume = st.number_input("Bước đặt KL", value=int(main_data.get(
+        'gap_volume') or 0), key="new_gap_volume")
+
+    if st.button("Update"):
+        # Placeholder for saving to database
+        update_price_config(symbol, new_high, new_low, new_rsi_14, new_trend, new_gap_volume)
+        st.success("Dữ liệu đã được lưu (placeholder)")
+        st.rerun()  # Refresh the app to show updated data
+    pass
+
+
+def display_update_price_config_button(main_data, symbol):
+    if st.button('Update price config'):
+        show_update_price_config_dialog(main_data, symbol)
     pass

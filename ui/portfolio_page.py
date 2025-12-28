@@ -137,6 +137,7 @@ def _display_portfolio_metrics(port_cum_growth, vni_cum_growth, vn30_cum_growth)
     
     st.success(f"💡 Danh mục của bạn đang {'vượt trội' if alpha > 0 else 'kém hơn'} thị trường {abs(alpha):.2f}% kể từ khi bắt đầu đầu tư.")
 
+@st.fragment
 def _display_performance_table(portfolio_results):
     """
     Hiển thị bảng chi tiết hiệu quả đầu tư cho từng mã cổ phiếu.
@@ -144,12 +145,20 @@ def _display_performance_table(portfolio_results):
     st.write("### 📊 Chi tiết hiệu quả từng mã")
     res_df = pd.DataFrame(portfolio_results)
     
+    # Bộ lọc theo mã cổ phiếu
+    col1, _ = st.columns([1, 2])
+    with col1:
+        search_symbol = st.text_input("🔍 Lọc theo mã cổ phiếu", "").strip().upper()
+    
+    if search_symbol:
+        res_df = res_df[res_df['Mã'].str.contains(search_symbol, na=False)]
+    
     # Định dạng màu cho cột lợi nhuận
     def highlight_profit(val):
         color = '#1ed760' if val > 0 else '#ff4b4b'
         return f'color: {color}; font-weight: bold'
 
-    st.dataframe(res_df.style.map(highlight_profit, subset=['Lợi nhuận (%)']), use_container_width=True)
+    st.dataframe(res_df.style.map(highlight_profit, subset=['Lợi nhuận (%)']), width='stretch')
 
 def show_portfolio_page():
     st.title("🤖 Phân tích Hiệu quả Danh mục")
