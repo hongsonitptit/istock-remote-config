@@ -22,6 +22,7 @@ def get_market_data(symbols, start_date):
     
     progress_bar = st.progress(0)
     for i, sym in enumerate(all_symbols):
+        logger.info(f"Loading history price data for {sym}")
         try:
             time.sleep(1)
             # Ưu tiên VCI vì dữ liệu chỉ số ổn định
@@ -79,6 +80,8 @@ def _draw_performance_chart(chart_df):
         "crosshair": {
             "mode": 0, # Normal mode
         },
+        "handleScroll": False,
+        "handleScale": False,
     }
 
     # Cấu hình các đường dữ liệu
@@ -144,6 +147,10 @@ def _display_performance_table(portfolio_results):
     """
     st.write("### 📊 Chi tiết hiệu quả từng mã")
     res_df = pd.DataFrame(portfolio_results)
+    # làm tròn gia_mua , gia_ban , loi_nhuan 
+    res_df['Giá mua'] = res_df['Giá mua'].round(2)
+    res_df['Giá hiện tại/bán'] = res_df['Giá hiện tại/bán'].round(2)
+    res_df['Lợi nhuận (%)'] = res_df['Lợi nhuận (%)'].round(2)
     
     # Bộ lọc theo mã cổ phiếu
     col1, _ = st.columns([1, 2])
