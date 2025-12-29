@@ -173,6 +173,9 @@ def show_portfolio_page():
     # 1. Lấy dữ liệu giao dịch
     transactions = get_deals()
     transactions = transactions.sort_values(by=['symbol', 'ngay_mua'])
+
+    # transactions = transactions[transactions['ngay_mua'] >= '2025-01-01']
+    # transactions = transactions[transactions['symbol'] == 'VHM']
     
     # 2. Dùng thư viện vnstock để tính giá mua và giá bán
     min_ngay_mua = transactions['ngay_mua'].min()
