@@ -2,46 +2,38 @@ import streamlit as st
 import pandas as pd
 import json
 from vnstock import Vnstock
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from utils.data_utils import get_deals
 from logger import default_logger as logger
 from streamlit_lightweight_charts import renderLightweightCharts
 import time
 
 @st.cache_data(ttl=3600)
-def get_market_data(symbols, start_date):
+def get_market_data(symbol, start_date):
     """
     Tải dữ liệu giá đóng cửa lịch sử cho các mã cổ phiếu và chỉ số VNINDEX, VN30.
     """
-    market_data = {}
     vnstock_client = Vnstock()
     end_date = datetime.now().strftime('%Y-%m-%d')
     
-    # Lấy tất cả mã cổ phiếu + VNINDEX, VN30 để so sánh
-    all_symbols = list(set(symbols) | {'VNINDEX', 'VN30'})
-    
-    progress_bar = st.progress(0)
-    for i, sym in enumerate(all_symbols):
-        logger.info(f"Loading history price data for {sym}")
-        try:
-            time.sleep(1)
-            # Ưu tiên VCI vì dữ liệu chỉ số ổn định
-            source = 'VCI'
-            stock = vnstock_client.stock(symbol=sym, source=source)
-            df = stock.quote.history(start=start_date, end=end_date)
-            
-            if df is not None and not df.empty:
-                df['time'] = pd.to_datetime(df['time'])
-                df = df.set_index('time')
-                market_data[sym] = df['close']
-            else:
-                logger.warning(f"Không có dữ liệu cho {sym}")
-        except Exception as e:
-            logger.error(f"Lỗi khi tải {sym}: {e}")
+    logger.info(f"Loading history price data for {symbol}")
+    try:
+        time.sleep(1)
+        # Ưu tiên VCI vì dữ liệu chỉ số ổn định
+        source = 'VCI'
+        stock = vnstock_client.stock(symbol=symbol, source=source)
+        df = stock.quote.history(start=start_date, end=end_date)
         
-        progress_bar.progress((i + 1) / len(all_symbols))
-    progress_bar.empty()
-    return market_data
+        if df is not None and not df.empty:
+            df['time'] = pd.to_datetime(df['time'])
+            df = df.set_index('time')
+            return df['close']
+        else:
+            logger.warning(f"Không có dữ liệu cho {symbol}")
+    except Exception as e:
+        logger.error(f"Lỗi khi tải {symbol}: {e}")
+        
+    raise Exception(f"Không có dữ liệu cho {symbol}")
 
 def _draw_performance_chart(chart_df):
     """
@@ -174,12 +166,19 @@ def show_portfolio_page():
     transactions = get_deals()
     transactions = transactions.sort_values(by=['symbol', 'ngay_mua'])
 
-    # transactions = transactions[transactions['ngay_mua'] >= '2025-01-01']
+    # transactions = transactions[transactions['ngay_mua'] >= '2025-01-10']
     # transactions = transactions[transactions['symbol'] == 'VHM']
     
-    # 2. Dùng thư viện vnstock để tính giá mua và giá bán
     min_ngay_mua = transactions['ngay_mua'].min()
-    market_prices = get_market_data(transactions['symbol'].unique(), min_ngay_mua)
+    market_prices = dict()
+    # Lấy tất cả mã cổ phiếu + VNINDEX, VN30 để so sánh
+    symbols = transactions['symbol'].unique().tolist()
+    symbols.extend(['VNINDEX', 'VN30'])
+    progress_bar = st.progress(0)
+    for symbol in symbols:
+        market_prices[symbol] = get_market_data(symbol, min_ngay_mua)
+        progress_bar.progress((symbols.index(symbol) + 1) / len(symbols))
+    progress_bar.empty()
     
     if 'VNINDEX' not in market_prices:
         st.error("❌ Không thể kết nối dữ liệu VN-Index. Vui lòng thử lại sau.")
