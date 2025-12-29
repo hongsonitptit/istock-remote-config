@@ -161,11 +161,16 @@ def _display_performance_table(portfolio_results):
 
 def show_portfolio_page():
     st.title("🤖 Phân tích Hiệu quả Danh mục")
+
+    filterd_symbol = st.text_input("🔍 Lọc theo mã cổ phiếu", "", key="filterd_symbol").strip().upper()
     
     # 1. Lấy dữ liệu giao dịch
     transactions = get_deals()
     transactions = transactions.sort_values(by=['symbol', 'ngay_mua'])
 
+    if filterd_symbol != "":
+        transactions = transactions[transactions['symbol'] == filterd_symbol]
+    
     # transactions = transactions[transactions['ngay_mua'] >= '2025-01-10']
     # transactions = transactions[transactions['symbol'] == 'VHM']
     
