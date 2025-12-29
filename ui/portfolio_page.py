@@ -137,8 +137,38 @@ def _display_performance_table(portfolio_results):
     """
     Hiển thị bảng chi tiết hiệu quả đầu tư cho từng mã cổ phiếu.
     """
-    st.write("### 📊 Chi tiết hiệu quả từng mã")
+    st.write("### 📊 Chi tiết hiệu quả đầu tư")
     res_df = pd.DataFrame(portfolio_results)
+    
+    # --- TÍNH TOÁN THỐNG KÊ ---
+    closed_deals = res_df[res_df['Trạng thái'] == "Đã bán"]
+    open_deals = res_df[res_df['Trạng thái'] == "Đang nắm giữ"]
+    
+    num_closed = len(closed_deals)
+    num_open = len(open_deals)
+    
+    # Giả sử giá đơn vị là 1000 VND (phổ biến ở TTCK VN)
+    invested_closed = (closed_deals['Số lượng'] * closed_deals['Giá mua'] * 1000).sum()
+    profit_closed = ((closed_deals['Giá hiện tại/bán'] - closed_deals['Giá mua']) * closed_deals['Số lượng'] * 1000).sum()
+    
+    invested_open = (open_deals['Số lượng'] * open_deals['Giá mua'] * 1000).sum()
+    profit_open = ((open_deals['Giá hiện tại/bán'] - open_deals['Giá mua']) * open_deals['Số lượng'] * 1000).sum()
+    
+    total_profit = profit_closed + profit_open
+
+    # --- HIỂN THỊ THỐNG KÊ ---
+    m1, m2 = st.columns(2)
+    with m1:
+        st.metric("Số lượng Giao dịch", f"{num_closed} Đóng / {num_open} Mở", delta=f"{num_open/(num_closed+num_open)*100:.2f}%")
+        st.metric("Vốn đã đầu tư (Đóng)", f"{invested_closed:,.0f} đ", delta=f"{invested_closed/(invested_closed+invested_open)*100:.2f}%")
+        st.metric("Vốn đang đầu tư (Mở)", f"{invested_open:,.0f} đ", delta=f"{invested_open/(invested_closed+invested_open)*100:.2f}%")
+    with m2:
+        st.metric("Tổng lợi nhuận (Đóng+Mở)", f"{total_profit:,.0f} đ", delta=f"{total_profit/(invested_closed+invested_open)*100:.2f}%")
+        st.metric("Lợi nhuận (Đã đóng)", f"{profit_closed:,.0f} đ", delta=f"{profit_closed/invested_closed*100:.2f}%")
+        st.metric("Lợi nhuận (Đang mở)", f"{profit_open:,.0f} đ", delta=f"{profit_open/invested_open*100:.2f}%")
+    
+    # st.divider()
+
     # làm tròn gia_mua , gia_ban , loi_nhuan 
     res_df['Giá mua'] = res_df['Giá mua'].round(2)
     res_df['Giá hiện tại/bán'] = res_df['Giá hiện tại/bán'].round(2)
@@ -158,6 +188,7 @@ def _display_performance_table(portfolio_results):
         return f'color: {color}; font-weight: bold'
 
     st.dataframe(res_df.style.map(highlight_profit, subset=['Lợi nhuận (%)']), width='stretch')
+
 
 def show_portfolio_page():
     st.title("🤖 Phân tích Hiệu quả Danh mục")
@@ -280,15 +311,23 @@ def show_portfolio_page():
         'VN30': (vn30_cum_growth - 1) * 100
     })
     # 5. Hiển thị Dashboard
-    # Vẽ đồ thị
-    _draw_performance_chart(chart_df)
 
-    # Hiển thị thẻ tóm tắt
-    _display_portfolio_metrics(port_cum_growth, vni_cum_growth, vn30_cum_growth)
+    col1 , col2 = st.columns(2)
+    with col1:
+        # Vẽ đồ thị
+        _draw_performance_chart(chart_df)
+        # Hiển thị thẻ tóm tắt
+        _display_portfolio_metrics(port_cum_growth, vni_cum_growth, vn30_cum_growth)
+        _display_portfolio_aggregates(portfolio_results)
+    with col2:
+        # Hiển thị bảng chi tiết
+        _display_performance_table(portfolio_results)
 
-    # Hiển thị bảng chi tiết
-    _display_performance_table(portfolio_results)
-
+    
+def _display_portfolio_aggregates(portfolio_results):
+    
+    pass
+    
 
 if __name__ == "__main__":
     show_portfolio_page()
