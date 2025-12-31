@@ -130,8 +130,8 @@ def display_dividend_payment_history_table(symbol):
     if len(symbol) > 3:
         # skip this chart for ETF
         return
-    from utils.api_utils import get_dividend_payment_histories_2
-    dividend_data = get_dividend_payment_histories_2(symbol)
+    from utils.api_utils import get_dividend_payment_histories
+    dividend_data = get_dividend_payment_histories(symbol)
     if dividend_data:
         df = pd.DataFrame(dividend_data)
         # lưu lại sự kiện đầu tiên của dividend_data vào session state 

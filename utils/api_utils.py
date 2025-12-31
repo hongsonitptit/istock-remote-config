@@ -102,7 +102,7 @@ def get_avg_pe_pb_industry(symbol: str) -> dict:
     }
 
 
-def get_dividend_payment_histories_2(symbol: str) -> list:
+def get_dividend_payment_histories(symbol: str) -> list:
     try:
         url = "https://iq.vietcap.com.vn/api/iq-insight-service/v1/events"
         headers = {

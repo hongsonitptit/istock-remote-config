@@ -187,7 +187,12 @@ def _display_performance_table(portfolio_results):
         color = '#1ed760' if val > 0 else '#ff4b4b'
         return f'color: {color}; font-weight: bold'
 
-    st.dataframe(res_df.style.map(highlight_profit, subset=['Lợi nhuận (%)']), width='stretch')
+    st.dataframe(res_df.style.map(highlight_profit, subset=['Lợi nhuận (%)'])
+    .format({
+        'Giá mua': '{:,.2f}',
+        'Giá hiện tại/bán': '{:,.2f}',
+        'Lợi nhuận (%)': '{:.2f}'
+    }), width='stretch')
 
 
 def show_portfolio_page():
@@ -314,19 +319,101 @@ def show_portfolio_page():
 
     col1 , col2 = st.columns(2)
     with col1:
+        _display_portfolio_aggregates(portfolio_results)
+    with col2:
         # Vẽ đồ thị
         _draw_performance_chart(chart_df)
         # Hiển thị thẻ tóm tắt
         _display_portfolio_metrics(port_cum_growth, vni_cum_growth, vn30_cum_growth)
-        _display_portfolio_aggregates(portfolio_results)
-    with col2:
         # Hiển thị bảng chi tiết
         _display_performance_table(portfolio_results)
 
     
 def _display_portfolio_aggregates(portfolio_results):
+    """
+    Tính toán và hiển thị bảng tổng hợp danh mục hiện tại theo từng mã.
+    """
+    st.write("### 💼 Phân bổ Danh mục hiện tại")
     
-    pass
+    if not portfolio_results:
+        st.info("Chưa có dữ liệu danh mục.")
+        return
+        
+    df = pd.DataFrame(portfolio_results)
+    
+    # Chỉ lấy các giao dịch đang nắm giữ
+    open_df = df[df['Trạng thái'] == "Đang nắm giữ"].copy()
+    
+    if open_df.empty:
+        st.info("Hiện không có cổ phiếu nào trong danh mục đang nắm giữ.")
+        return
+    
+    # Tính toán giá trị đầu tư và giá trị thị trường cho từng giao dịch
+    # Giả sử giá đơn vị là 1000 VND dựa trên logic ở các phần khác
+    open_df['Vốn đầu tư'] = open_df['Số lượng'] * open_df['Giá mua'] * 1000
+    open_df['Giá trị thị trường'] = open_df['Số lượng'] * open_df['Giá hiện tại/bán'] * 1000
+    
+    # Gộp theo mã
+    agg_df = open_df.groupby('Mã').agg({
+        'Số lượng': 'sum',
+        'Vốn đầu tư': 'sum',
+        'Giá trị thị trường': 'sum'
+    }).reset_index()
+    
+    # Lấy giá thị trường hiện tại (duy nhất cho mỗi mã)
+    market_prices = open_df.groupby('Mã')['Giá hiện tại/bán'].first().reset_index()
+    agg_df = agg_df.merge(market_prices, on='Mã')
+    
+    # Tính toán các chỉ số bổ sung
+    # Giá vốn TB = Tổng vốn / (Tổng số lượng * 1000)
+    agg_df['Giá vốn TB'] = (agg_df['Vốn đầu tư'] / (agg_df['Số lượng'] * 1000)).round(2)
+    agg_df['Lợi nhuận'] = agg_df['Giá trị thị trường'] - agg_df['Vốn đầu tư']
+    agg_df['Tỷ lệ lợi nhuận'] = (agg_df['Lợi nhuận'] / agg_df['Vốn đầu tư'] * 100).round(2)
+    
+    # Tính tỉ trọng theo giá trị thị trường
+    total_market_value = agg_df['Giá trị thị trường'].sum()
+    agg_df['Tỉ trọng (%)'] = (agg_df['Giá trị thị trường'] / total_market_value * 100).round(2) if total_market_value > 0 else 0
+    
+    # Đổi tên và chọn cột hiển thị
+    agg_df = agg_df.rename(columns={'Giá hiện tại/bán': 'Giá thị trường'})
+    display_df = agg_df[['Mã', 'Số lượng', 'Giá vốn TB', 'Giá thị trường', 'Vốn đầu tư', 'Giá trị thị trường', 'Lợi nhuận', 'Tỷ lệ lợi nhuận', 'Tỉ trọng (%)']]
+    
+    # Sắp xếp theo mã tăng dần
+    display_df = display_df.sort_values(by='Mã', ascending=True)
+    
+    # Định dạng hiển thị và tô màu
+    def highlight_profit(val):
+        color = '#1ed760' if val > 0 else '#ff4b4b'
+        return f'color: {color}; font-weight: bold'
+
+    st.dataframe(display_df.style.map(highlight_profit, subset=['Tỷ lệ lợi nhuận', 'Lợi nhuận'])
+        .format({
+            'Số lượng': '{:,.0f}',
+            'Vốn đầu tư': '{:,.0f} đ',
+            'Giá trị thị trường': '{:,.0f} đ',
+            'Giá vốn TB': '{:,.2f}',
+            'Giá thị trường': '{:,.2f}',
+            'Lợi nhuận': '{:,.0f} đ',
+            'Tỷ lệ lợi nhuận': '{:+.2f}%',
+            'Tỉ trọng (%)': '{:.2f}%'
+        }),
+        width='stretch',
+        height=30*(len(display_df)+2),
+        row_height=30
+    )
+
+    # st.table(
+    #     display_df.style.map(highlight_profit, subset=['Tỷ lệ lợi nhuận'])
+    #     .format({
+    #         'Số lượng': '{:,.0f}',
+    #         'Vốn đầu tư': '{:,.0f} đ',
+    #         'Giá trị thị trường': '{:,.0f} đ',
+    #         'Giá vốn TB': '{:,.2f}',
+    #         'Giá thị trường': '{:,.2f}',
+    #         'Tỷ lệ lợi nhuận': '{:+.2f}%',
+    #         'Tỉ trọng (%)': '{:.2f}%'
+    #     })
+    # )
     
 
 if __name__ == "__main__":
