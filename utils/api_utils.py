@@ -187,7 +187,8 @@ def get_trading_view_data(symbol: str, start: str, end: str) -> pd.DataFrame:
                 'time': time,
             })
         result = pd.DataFrame(result)
-        result = result.sort_values(by='date', ascending=True, ignore_index=True)
+        result = result.sort_values(
+            by='date', ascending=True, ignore_index=True)
         return result
     except Exception as e:
         logger.exception(f"Error getting volume history: {e}")
@@ -226,7 +227,8 @@ def get_company_info(symbol: str) -> dict:
         if data['IndustryName'] in data['SubIndustryName']:
             industry = ', '.join([data['SubIndustryName'], data['SectorName']])
         else:
-            industry = ', '.join([data['IndustryName'], data['SubIndustryName']])
+            industry = ', '.join(
+                [data['IndustryName'], data['SubIndustryName']])
 
         return {
             'name': company_name,
@@ -260,13 +262,14 @@ def get_stock_data_and_rsi(symbol: str, days: int = 30, rsi_period: int = 14):
     # Lấy thêm dữ liệu để tính RSI chính xác (cần ít nhất rsi_period + days)
     end_date = datetime.now()
     start_date = end_date - timedelta(days=180)
-    
+
     # Format ngày theo định dạng YYYY-MM-DD
     start_str = start_date.strftime('%Y-%m-%d')
     end_str = end_date.strftime('%Y-%m-%d')
-    
-    logger.info(f"📊 Đang lấy dữ liệu cổ phiếu {symbol} từ {start_str} đến {end_str}...")
-    
+
+    logger.info(
+        f"📊 Đang lấy dữ liệu cổ phiếu {symbol} từ {start_str} đến {end_str}...")
+
     # Khởi tạo Vnstock và lấy dữ liệu
     # Thử TCBS trước, nếu lỗi thì dùng VCI
     try:
@@ -276,11 +279,11 @@ def get_stock_data_and_rsi(symbol: str, days: int = 30, rsi_period: int = 14):
         logger.warning(f"⚠️  TCBS khong ho tro ma {symbol}, thu dung VCI...")
         stock = Vnstock().stock(symbol=symbol, source='VCI')
         df = stock.quote.history(start=start_str, end=end_str, interval='1D')
-    
+
     if df.empty:
         logger.error(f"Không thể lấy dữ liệu cho mã {symbol}")
         return None
-    
+
     logger.info(f"✅ Đã lấy {len(df)} phiên giao dịch")
 
     # Tính RSI
@@ -298,7 +301,6 @@ def get_foreigner_room(symbol: str, start_date: str, end_date: str) -> list:
     limit = 1000
     offset = 0
 
-
     payload = {}
     headers = {
         'Authorization': f'Bearer {FIREANT_JWT_TOKEN}'
@@ -309,7 +311,8 @@ def get_foreigner_room(symbol: str, start_date: str, end_date: str) -> list:
     while True:
         url = f"https://restv2.fireant.vn/symbols/{symbol}/historical-quotes?startDate={start_date}&endDate={end_date}&offset={offset}&limit={limit}"
         logger.info(f"Get data from {url}")
-        response = requests.request("GET", url, headers=headers, data=payload, verify=False)
+        response = requests.request(
+            "GET", url, headers=headers, data=payload, verify=False)
         records = json.loads(response.text)
 
         if len(records) == 0:
@@ -328,3 +331,96 @@ def get_foreigner_room(symbol: str, start_date: str, end_date: str) -> list:
     return foreign_room
 
 # get_foreigner_room('FPT', '2025-12-01', '2025-12-25')
+
+
+def get_doanh_thu_loi_nhuan_quy(symbol: str, year: int) -> list:
+    url = f"https://apiextaws.tcbs.com.vn/tcanalysis/v1/finance/{symbol}/incomestatement?yearly=0&isAll=true"
+
+    payload = {}
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0',
+        'Accept': 'application/json',
+        'Accept-Language': 'vi',
+        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Referer': 'https://tcinvest.tcbs.com.vn/',
+        'Content-Type': 'application/json',
+        'traceparent': '00-190d322f262d65d8af5a423f5a27d21a-5ff8cc3633d64852-01',
+        'tracestate': 'es=s:1',
+        'Origin': 'https://tcinvest.tcbs.com.vn',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-site',
+        'Authorization': f'Bearer {get_token(tcbs_son)}',
+        'Connection': 'keep-alive'
+    }
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+
+    data = json.loads(response.text)
+
+    current_year = datetime.now().year
+
+    doanh_thu_quy = []
+    lnst_quy = []
+    for item in data:
+        if item['year'] == year:
+            doanh_thu_quy.append(item['revenue'])
+            lnst_quy.append(item['postTaxProfit'])
+
+    return doanh_thu_quy, lnst_quy
+
+
+def get_doanh_thu_loi_nhuan_nam(symbol: str) -> list:
+    url = f"https://apiextaws.tcbs.com.vn/tcanalysis/v1/finance/{symbol}/incomestatement?yearly=1&isAll=true"
+
+    payload = {}
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0',
+        'Accept': 'application/json',
+        'Accept-Language': 'vi',
+        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Referer': 'https://tcinvest.tcbs.com.vn/',
+        'Content-Type': 'application/json',
+        'traceparent': '00-190d322f262d65d8af5a423f5a27d21a-5ff8cc3633d64852-01',
+        'tracestate': 'es=s:1',
+        'Origin': 'https://tcinvest.tcbs.com.vn',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-site',
+        'Authorization': f'Bearer {get_token(tcbs_son)}',
+        'Connection': 'keep-alive'
+    }
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+
+    data = json.loads(response.text)
+
+    df = pd.DataFrame(data)
+
+    current_year = datetime.now().year
+
+    # tạo df2 chứa các năm từ current_year - 5 đến current_year
+    df2 = pd.DataFrame({
+        'year': range(current_year - 5, current_year + 1)
+    })
+
+    df = pd.merge(df2, df, on='year', how='left')
+
+    # chỉ giữ lại các cột year, revenue, postTaxProfit
+    df = df[['year', 'revenue', 'postTaxProfit']]
+
+    for index, row in df.iterrows():
+        if pd.isna(row['revenue']):
+            doanh_thu_list, loi_nhuan_list = get_doanh_thu_loi_nhuan_quy(symbol, row['year'])
+            df.at[index, 'revenue'] = sum(doanh_thu_list)
+            df.at[index, 'postTaxProfit'] = sum(loi_nhuan_list)
+
+    # print(df)
+    result = []
+    result.append(df['revenue'].tolist())
+    result.append(df['postTaxProfit'].tolist())
+
+    return result
+
+
+# get_doanh_thu_loi_nhuan_nam('VCG')

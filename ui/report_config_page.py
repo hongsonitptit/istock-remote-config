@@ -9,9 +9,10 @@ from ui.gdnn_chart_component import display_foreiger_room
 from ui.report_table_component import display_report_table
 from ui.index_report_component import display_summary_reports
 from ui.trading_view import display_trading_view
+from utils.api_utils import get_doanh_thu_loi_nhuan_nam
 from utils.data_utils import (get_main_stock_data,
                               get_doanh_thu_loi_nhuan_quy, save_report,
-                              get_doanh_thu_loi_nhuan_nam,
+                            #   get_doanh_thu_loi_nhuan_nam,
                               update_price_config, get_forigener_trading_trend,
                               format_currency_short, get_company_estimations,
                               get_rsi_history)
