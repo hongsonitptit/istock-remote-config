@@ -9,9 +9,10 @@ from ui.gdnn_chart_component import display_foreiger_room
 from ui.report_table_component import display_report_table
 from ui.index_report_component import display_summary_reports
 from ui.trading_view import display_trading_view
-from utils.api_utils import get_doanh_thu_loi_nhuan_nam
+from utils.api_utils import get_doanh_thu_loi_nhuan_nam, get_last_doanh_thu_loi_nhuan_quy
 from utils.data_utils import (get_main_stock_data,
-                              get_doanh_thu_loi_nhuan_quy, save_report,
+                              save_report,
+                            #   get_doanh_thu_loi_nhuan_quy, 
                             #   get_doanh_thu_loi_nhuan_nam,
                               update_price_config, get_forigener_trading_trend,
                               format_currency_short, get_company_estimations,
@@ -38,10 +39,10 @@ def display_lnst_doanhthu_quy_chart(symbol):
         # skip this chart for ETF
         return
     st.write("Doanh thu và Lợi nhuận sau thuế ")
-    data = get_doanh_thu_loi_nhuan_quy(symbol)
+    data = get_last_doanh_thu_loi_nhuan_quy(symbol)
     chart_data = pd.DataFrame(
         {
-            "Danh mục": ["Q1", "Q2", "Q3", "Q4", "Total"],
+            "Danh mục": ["Q0", "Q1", "Q2", "Q3", "Q4", "Total"],
             "Doanh thu": data[0],
             "LNST": data[1]
         }
@@ -135,9 +136,12 @@ def display_dividend_payment_history_table(symbol):
     dividend_data = get_dividend_payment_histories(symbol)
     if dividend_data:
         df = pd.DataFrame(dividend_data)
+        # sort by time
+        df = df.sort_values(by='Thời gian', ascending=False)
+
         # lưu lại sự kiện đầu tiên của dividend_data vào session state 
         if "last_dividend_event_time" not in st.session_state:
-            st.session_state["last_dividend_event_time"] = dividend_data[0]['Thời gian']
+            st.session_state["last_dividend_event_time"] = df['Thời gian'][0]
 
         def highlight_rows(row):
             try:

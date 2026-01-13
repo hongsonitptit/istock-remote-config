@@ -332,6 +332,73 @@ def get_foreigner_room(symbol: str, start_date: str, end_date: str) -> list:
 
 # get_foreigner_room('FPT', '2025-12-01', '2025-12-25')
 
+def get_last_doanh_thu_loi_nhuan_quy(symbol: str) -> list:
+    url = f"https://apiextaws.tcbs.com.vn/tcanalysis/v1/finance/{symbol}/incomestatement?yearly=0&isAll=true"
+
+    payload = {}
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0',
+        'Accept': 'application/json',
+        'Accept-Language': 'vi',
+        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Referer': 'https://tcinvest.tcbs.com.vn/',
+        'Content-Type': 'application/json',
+        'traceparent': '00-190d322f262d65d8af5a423f5a27d21a-5ff8cc3633d64852-01',
+        'tracestate': 'es=s:1',
+        'Origin': 'https://tcinvest.tcbs.com.vn',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-site',
+        'Authorization': f'Bearer {get_token(tcbs_son)}',
+        'Connection': 'keep-alive'
+    }
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+
+    data = json.loads(response.text)
+
+    current_year = datetime.now().year
+    last_year = current_year - 1
+
+    doanh_thu_quy = []
+    lnst_quy = []
+    init_doanh_thu_quy = {
+        f'{last_year}-4': 0,
+        f'{current_year}-1': 0,
+        f'{current_year}-2': 0,
+        f'{current_year}-3': 0,
+        f'{current_year}-4': 0,
+    }
+    init_lnst_quy = {
+        f'{last_year}-4': 0,
+        f'{current_year}-1': 0,
+        f'{current_year}-2': 0,
+        f'{current_year}-3': 0,
+        f'{current_year}-4': 0,
+    }
+
+    for item in data:
+        current_key = f'{item["year"]}-{item["quarter"]}'
+        last_key = f'{item["year"]}-{item["quarter"]}'
+        if current_key in init_doanh_thu_quy:
+            init_doanh_thu_quy[current_key] = item['revenue']
+        if current_key in init_lnst_quy:
+            init_lnst_quy[current_key] = item['postTaxProfit']
+        if last_key in init_doanh_thu_quy:
+            init_doanh_thu_quy[last_key] = item['revenue']
+        if last_key in init_lnst_quy:
+            init_lnst_quy[last_key] = item['postTaxProfit']
+    
+    doanh_thu_quy = []
+    lnst_quy = []
+    for key, value in init_doanh_thu_quy.items():
+        doanh_thu_quy.append(value)
+    for key, value in init_lnst_quy.items():
+        lnst_quy.append(value)
+    doanh_thu_quy.append(sum(doanh_thu_quy))
+    lnst_quy.append(sum(lnst_quy))
+    return doanh_thu_quy, lnst_quy
+    
 
 def get_doanh_thu_loi_nhuan_quy(symbol: str, year: int) -> list:
     url = f"https://apiextaws.tcbs.com.vn/tcanalysis/v1/finance/{symbol}/incomestatement?yearly=0&isAll=true"
