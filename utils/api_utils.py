@@ -395,8 +395,8 @@ def get_last_doanh_thu_loi_nhuan_quy(symbol: str) -> list:
         doanh_thu_quy.append(value)
     for key, value in init_lnst_quy.items():
         lnst_quy.append(value)
-    doanh_thu_quy.append(sum(doanh_thu_quy))
-    lnst_quy.append(sum(lnst_quy))
+    doanh_thu_quy.append(sum(doanh_thu_quy[1:]))
+    lnst_quy.append(sum(lnst_quy[1:]))
     return doanh_thu_quy, lnst_quy
     
 
