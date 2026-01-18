@@ -1,6 +1,6 @@
 import streamlit as st
 from utils.data_utils import format_currency_short
-from utils.data_utils import update_price_config
+from utils.data_utils import update_price_config, add_price_config, delete_price_config
 
 def display_main_stock_data(main_data, symbol):
     # Lấy giá trị rsi_14, mặc định là 'N/A' nếu không có
@@ -98,27 +98,67 @@ def display_main_stock_data(main_data, symbol):
 @st.dialog("Update price config")
 def show_update_price_config_dialog(main_data, symbol):
     new_high = st.number_input("High", min_value=0.0, value=float(
-        main_data.get('high') or 0), key="new_high")
+        main_data.get('high') or 0), key="update_high")
     new_low = st.number_input("Low", min_value=0.0, value=float(
-        main_data.get('low') or 0), key="new_low")
+        main_data.get('low') or 0), key="update_low")
     new_rsi_14 = st.number_input("RSI 14", value=float(main_data.get(
-        'rsi_14') or 0), min_value=0.0, max_value=100.0, format="%.2f", key="new_rsi_14")
+        'rsi_14') or 0), min_value=0.0, max_value=100.0, format="%.2f", key="update_rsi_14")
     if new_rsi_14 <= 30:
         st.warning("RSI 14 <= 30 !")
     new_trend = st.text_input("Quyết định", value=main_data.get(
-        'trend') or 'N/A', key="new_trend")
+        'trend') or 'N/A', key="update_trend")
     new_gap_volume = st.number_input("Bước đặt KL", value=int(main_data.get(
-        'gap_volume') or 0), key="new_gap_volume")
+        'gap_volume') or 0), key="update_gap_volume")
 
     if st.button("Update"):
-        # Placeholder for saving to database
         update_price_config(symbol, new_high, new_low, new_rsi_14, new_trend, new_gap_volume)
-        st.success("Dữ liệu đã được lưu (placeholder)")
-        st.rerun()  # Refresh the app to show updated data
-    pass
+        st.success("Dữ liệu đã được cập nhật")
+        st.rerun()
+
+
+@st.dialog("Add price config")
+def show_add_price_config_dialog(main_data, symbol):
+    new_high = st.number_input("High", min_value=0.0, value=float(
+        main_data.get('high') or 0), key="add_high")
+    new_low = st.number_input("Low", min_value=0.0, value=float(
+        main_data.get('low') or 0), key="add_low")
+    new_rsi_14 = st.number_input("RSI 14", value=float(main_data.get(
+        'rsi_14') or 0), min_value=0.0, max_value=100.0, format="%.2f", key="add_rsi_14")
+    if new_rsi_14 <= 30:
+        st.warning("RSI 14 <= 30 !")
+    new_trend = st.text_input("Quyết định", value=main_data.get(
+        'trend') or 'N/A', key="add_trend")
+    new_gap_volume = st.number_input("Bước đặt KL", value=int(main_data.get(
+        'gap_volume') or 0), key="add_gap_volume")
+
+    if st.button("Add"):
+        add_price_config(symbol, new_high, new_low, new_rsi_14, new_trend, new_gap_volume)
+        st.success("Dữ liệu đã được thêm mới")
+        st.rerun()
+
+
+@st.dialog("Delete confirmation")
+def show_delete_confirmation_dialog(symbol):
+    st.warning(f"Bạn có chắc chắn muốn xóa cấu hình giá cho {symbol}?")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Yes, delete it", type="primary", use_container_width=True):
+            delete_price_config(symbol)
+            st.success("Đã xóa cấu hình giá")
+            st.rerun()
+    with col2:
+        if st.button("Cancel", use_container_width=True):
+            st.rerun()
 
 
 def display_update_price_config_button(main_data, symbol):
-    if st.button('Update price config'):
-        show_update_price_config_dialog(main_data, symbol)
-    pass
+    cols = st.columns([1, 1, 1])
+    with cols[0]:
+        if st.button('🔄', disabled=not main_data.get('in_price_config', False), use_container_width=True, help="Update price config"):
+            show_update_price_config_dialog(main_data, symbol)
+    with cols[1]:
+        if st.button('➕', disabled=main_data.get('in_price_config', False), use_container_width=True, help="Add price config"):
+            show_add_price_config_dialog(main_data, symbol)
+    with cols[2]:
+        if st.button('🗑️', disabled=not main_data.get('in_price_config', False), use_container_width=True, help="Delete price config"):
+            show_delete_confirmation_dialog(symbol)

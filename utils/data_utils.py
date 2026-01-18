@@ -80,6 +80,7 @@ def get_main_stock_data(symbol: str):
     where cp.symbol = '{symbol.upper()}'   
     """
     # prefill data to avoid KeyError
+    data['in_price_config'] = False
     data['high'] = 0.0
     data['low'] = 0.0
     data['gap'] = 0.0
@@ -93,6 +94,8 @@ def get_main_stock_data(symbol: str):
         result = db_conn.raw_query(query)
         if result:
             data.update(result[0])
+            if query == price_config_sql:
+                data['in_price_config'] = True
         # logger.debug(result)
 
     # Example output structure: {'price': 88100, 'rsi_14': 32.5, 'high': 120.0, 'low': 90.0, 'gap': 36.20885357548242, 'total': 5055, 'cost_price': 108560.8}
@@ -208,6 +211,23 @@ def update_price_config(symbol, high, low, rsi, trend, gap_volume):
     """
     db_conn.crud_query(update_sql)
     logger.info(f"Price config updated for {symbol} - high: {high}, low: {low}")
+
+
+def add_price_config(symbol, high, low, rsi, trend, gap_volume):
+    insert_sql = f"""
+    INSERT INTO price_config (symbol, high, low, rsi_14, trend, gap_volume)
+    VALUES ('{symbol.upper()}', {high}, {low}, {rsi}, '{trend}', {gap_volume});
+    """
+    db_conn.crud_query(insert_sql)
+    logger.info(f"Price config added for {symbol}")
+
+
+def delete_price_config(symbol):
+    delete_sql = f"""
+    DELETE FROM price_config WHERE symbol = '{symbol.upper()}';
+    """
+    db_conn.crud_query(delete_sql)
+    logger.info(f"Price config deleted for {symbol}")
 
 
 def convert_forigener_trading_data(foreigner_data_str: str):
