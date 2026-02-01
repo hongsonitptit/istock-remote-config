@@ -1,10 +1,19 @@
 """
 Utility functions để làm việc với thư viện vnstock
 """
+import os
 import pandas as pd
 from vnstock import Vnstock
 from logger import default_logger as logger
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+from vnstock import register_user, check_status
+register_user(api_key=os.getenv('VNSTOCK_API_KEY'))
+check_status()
 
 # Try to import TA-Lib, set flag if available
 try:

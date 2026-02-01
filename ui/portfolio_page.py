@@ -4,11 +4,14 @@ import json
 from vnstock import Vnstock
 from datetime import datetime, timedelta, date
 from utils.data_utils import get_deals
+from utils.decorators import retry
 from logger import default_logger as logger
 from streamlit_lightweight_charts import renderLightweightCharts
 import time
+from utils.vnstock_utils import *
 
 @st.cache_data(ttl=3600)
+@retry()
 def get_market_data(symbol, start_date):
     """
     Tải dữ liệu giá đóng cửa lịch sử cho các mã cổ phiếu và chỉ số VNINDEX, VN30.
@@ -18,7 +21,7 @@ def get_market_data(symbol, start_date):
     
     logger.info(f"Loading history price data for {symbol}")
     try:
-        time.sleep(1)
+        time.sleep(1) # Sleep to avoid rate limit: 20/requests per minute
         # Ưu tiên VCI vì dữ liệu chỉ số ổn định
         source = 'VCI'
         stock = vnstock_client.stock(symbol=symbol, source=source)
@@ -115,7 +118,7 @@ def _draw_performance_chart(chart_df):
         }
     ], 'performance_chart')
 
-def _display_portfolio_metrics(port_cum_growth, vni_cum_growth, vn30_cum_growth):
+def _display_portfolio_metrics(port_cum_growth, vni_cum_growth, vn30_cum_growth, avg_holding_days):
     """
     Hiển thị các thẻ chỉ số tóm tắt về lợi nhuận danh mục và VN-Index.
     """
@@ -124,11 +127,12 @@ def _display_portfolio_metrics(port_cum_growth, vni_cum_growth, vn30_cum_growth)
     final_vn30_ret = (vn30_cum_growth.iloc[-1] - 1) * 100
     alpha = final_port_ret - final_vni_ret
     
-    m1, m2, m3, m4 = st.columns(4)
+    m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("Lợi nhuận Danh mục", f"{final_port_ret:.2f}%", f"{final_port_ret:+.2f}%")
     m2.metric("Lợi nhuận VN-Index", f"{final_vni_ret:.2f}%", f"{final_vni_ret:+.2f}%")
     m3.metric("Lợi nhuận VN30", f"{final_vn30_ret:.2f}%", f"{final_vn30_ret:+.2f}%")
     m4.metric("Chênh lệch (Alpha)", f"{alpha:.2f}%", delta=round(alpha, 2), delta_color="normal")
+    m5.metric("Số ngày nắm giữ TB", f"{avg_holding_days:.0f} ngày")
     
     st.success(f"💡 Danh mục của bạn đang {'vượt trội' if alpha > 0 else 'kém hơn'} thị trường {abs(alpha):.2f}% kể từ khi bắt đầu đầu tư.")
 
@@ -219,6 +223,7 @@ def show_portfolio_page():
     for symbol in symbols:
         market_prices[symbol] = get_market_data(symbol, min_ngay_mua)
         progress_bar.progress((symbols.index(symbol) + 1) / len(symbols))
+        
     progress_bar.empty()
     
     if 'VNINDEX' not in market_prices:
@@ -235,8 +240,11 @@ def show_portfolio_page():
     # Bỏ các ngày trống hoàn toàn ở đầu
     price_df = price_df.dropna(subset=['VNINDEX'])
 
-    # 3. Tính lợi nhuận % chi tiết từng mã
+    # 3. Tính lợi nhuận % chi tiết từng mã và số ngày nắm giữ
     portfolio_results = []
+    holding_days_list = []
+    current_date = datetime.now()
+    
     for idx, row in transactions.iterrows():
         sym = row['symbol']
         qty = row['khoi_luong']
@@ -255,6 +263,16 @@ def show_portfolio_page():
         profit_pct = (exit_price - gia_mua) / gia_mua * 100
         status = "Đã bán" if s_date else "Đang nắm giữ"
         
+        # Tính số ngày nắm giữ
+        buy_date = pd.to_datetime(b_date)
+        if s_date:  # Giao dịch đã đóng
+            sell_date = pd.to_datetime(s_date)
+            holding_days = (sell_date - buy_date).days
+        else:  # Giao dịch đang mở
+            holding_days = (current_date - buy_date).days
+        
+        holding_days_list.append(holding_days)
+        
         portfolio_results.append({
             'Mã': sym,
             'Ngày mua': b_date,
@@ -265,6 +283,9 @@ def show_portfolio_page():
             'Lợi nhuận (%)': round(profit_pct, 2),
             'Trạng thái': status
         })
+    
+    # Tính số ngày nắm giữ trung bình
+    avg_holding_days = sum(holding_days_list) / len(holding_days_list) if holding_days_list else 0
 
     # 4. TÍNH TOÁN HIỆU SUẤT TÍCH LŨY
     returns_df = price_df.pct_change().fillna(0)
@@ -324,7 +345,7 @@ def show_portfolio_page():
         # Vẽ đồ thị
         _draw_performance_chart(chart_df)
         # Hiển thị thẻ tóm tắt
-        _display_portfolio_metrics(port_cum_growth, vni_cum_growth, vn30_cum_growth)
+        _display_portfolio_metrics(port_cum_growth, vni_cum_growth, vn30_cum_growth, avg_holding_days)
         # Hiển thị bảng chi tiết
         _display_performance_table(portfolio_results)
 
