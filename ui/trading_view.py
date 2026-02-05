@@ -23,7 +23,7 @@ except ImportError:
         "⚠️  TA-Lib chưa được cài đặt, sử dụng phương pháp tính RSI chuẩn với pandas")
     logger.info("   Để cài đặt TA-Lib: pip install TA-Lib")
 
-
+@st.cache_data(ttl=60)
 def calculate_rsi(data: pd.DataFrame, period: int = 14) -> list:
     """
     Tính RSI (Relative Strength Index) sử dụng TA-Lib hoặc pandas
@@ -67,6 +67,7 @@ def calculate_rsi(data: pd.DataFrame, period: int = 14) -> list:
 
 
 # Hàm tính RSI
+@st.cache_data(ttl=60)
 def calculate_rsi_2(prices, period=14):
     """Tính RSI (Relative Strength Index)"""
     deltas = np.diff(prices)
@@ -93,7 +94,7 @@ def calculate_rsi_2(prices, period=14):
 
     return rsi
 
-
+@st.cache_data(ttl=60)
 def get_trading_view_data_by_vnstock(symbol: str, start_str: str, end_str: str):
     """
     Lấy dữ liệu giá cổ phiếu và tính RSI

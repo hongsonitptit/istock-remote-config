@@ -3,6 +3,7 @@ from logger import default_logger as logger
 from utils.api_utils import get_company_info
 import json
 import pandas as pd
+import streamlit as st
 
 db_conn = PostgreDatabase()
 
@@ -31,6 +32,8 @@ def format_currency_short(value):
         return f"{value:.0f}"
 
 
+
+@st.cache_data(ttl=60)
 def get_report_by_symbol(symbol: str):
     report_sql = f"""
     SELECT * FROM (
@@ -51,6 +54,8 @@ def get_report_by_symbol(symbol: str):
 # get_report_by_symbol('FPT')
 
 
+
+@st.cache_data(ttl=60)
 def get_main_stock_data(symbol: str):
     company_info = get_company_info(symbol)
     data = dict()
@@ -103,6 +108,8 @@ def get_main_stock_data(symbol: str):
 
 # logger.debug(get_main_stock_data('FPT'))
 
+
+@st.cache_data(ttl=60)
 def get_doanh_thu_loi_nhuan_quy(symbol: str):
     doanh_thu_sql = f"""
     select 
@@ -143,6 +150,8 @@ def parse_doanh_thu_loi_nhuan(data_str: str) -> list:
     return result
 
 
+
+@st.cache_data(ttl=60)
 def get_doanh_thu_loi_nhuan_nam(symbol: str):
     query_1 = f"""
     SELECT symbol, doanh_thu_nam, ln_sau_thue_nam FROM company where symbol = '{symbol.upper()}'
@@ -176,6 +185,7 @@ def save_report(symbol, source, report_date, gia_muc_tieu, doanh_thu, loi_nhuan_
     VALUES ('{symbol.upper()}', '{source}', '{report_date}', {gia_muc_tieu}, {doanh_thu}, {loi_nhuan_sau_thue}, '{link}');
     """
     db_conn.crud_query(insert_sql)
+    get_report_by_symbol.clear()
     logger.info(f"Report saved for {symbol} - {source} - {report_date}")
 
 
@@ -184,6 +194,7 @@ def delete_report(report_id):
     DELETE FROM report WHERE id = {report_id};
     """
     db_conn.crud_query(delete_sql)
+    get_report_by_symbol.clear()
     logger.info(f"Report deleted with id: {report_id}")
 
 
@@ -200,6 +211,7 @@ def update_report(report_id, source, report_date, gia_muc_tieu, doanh_thu, loi_n
     """
     logger.info(update_sql)
     db_conn.crud_query(update_sql)
+    get_report_by_symbol.clear()
     logger.info(f"Report updated with id: {report_id}")
 
 
@@ -210,6 +222,7 @@ def update_price_config(symbol, high, low, rsi, trend, gap_volume):
     WHERE symbol = '{symbol.upper()}';
     """
     db_conn.crud_query(update_sql)
+    get_main_stock_data.clear()
     logger.info(f"Price config updated for {symbol} - high: {high}, low: {low}")
 
 
@@ -219,6 +232,7 @@ def add_price_config(symbol, high, low, rsi, trend, gap_volume):
     VALUES ('{symbol.upper()}', {high}, {low}, {rsi}, '{trend}', {gap_volume});
     """
     db_conn.crud_query(insert_sql)
+    get_main_stock_data.clear()
     logger.info(f"Price config added for {symbol}")
 
 
@@ -227,6 +241,7 @@ def delete_price_config(symbol):
     DELETE FROM price_config WHERE symbol = '{symbol.upper()}';
     """
     db_conn.crud_query(delete_sql)
+    get_main_stock_data.clear()
     logger.info(f"Price config deleted for {symbol}")
 
 
@@ -253,6 +268,8 @@ def convert_forigener_trading_data(foreigner_data_str: str):
     return parsed_data
 
 
+
+@st.cache_data(ttl=60)
 def get_forigener_trading_trend(symbol: str):
     trading_sql = f"""
     select history_values from foreigner_trading
@@ -270,6 +287,8 @@ def get_forigener_trading_trend(symbol: str):
     return convert_forigener_trading_data(foreigner_data_str)
 
 
+
+@st.cache_data(ttl=60)
 def get_company_estimations(symbol: str):
     estimation_sql = f"""
     select 
@@ -286,6 +305,8 @@ def get_company_estimations(symbol: str):
         return result[0]
     return {}
 
+
+@st.cache_data(ttl=60)
 def get_rsi_history(symbol: str) -> pd.DataFrame:
     rsi_sql = f"""
     select history_rsi_14 from rsi
@@ -303,6 +324,8 @@ def get_rsi_history(symbol: str) -> pd.DataFrame:
     return pd.DataFrame(data)
 
 
+
+@st.cache_data(ttl=60)
 def get_deals() -> pd.DataFrame:
     deals_sql = """
     select * from deal

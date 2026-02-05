@@ -4,6 +4,7 @@ Utility functions để làm việc với thư viện vnstock
 import os
 import pandas as pd
 from vnstock import Vnstock
+import streamlit as st
 from logger import default_logger as logger
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -23,6 +24,8 @@ except ImportError:
     HAS_TALIB = False
 
 
+
+@st.cache_data(ttl=60)
 def get_pe_pb_history(symbol: str, recent_years: int = 10):
     """
     Lấy lịch sử P/E và P/B của cổ phiếu từ vnstock
@@ -132,6 +135,8 @@ def get_pe_pb_history(symbol: str, recent_years: int = 10):
         return None
 
 
+
+@st.cache_data(ttl=60)
 def get_company_info(symbol: str) -> dict:
     try:
         stock = Vnstock().stock(symbol=symbol, source='VCI')
@@ -219,6 +224,8 @@ def calculate_rsi_14(data: pd.DataFrame, period: int = 14) -> pd.Series:
         
         return rsi
 
+
+@st.cache_data(ttl=60)
 def get_list_rsi_14(symbol: str, days: int = 30, rsi_period: int = 14):
     """
     Lấy dữ liệu giá cổ phiếu và tính RSI

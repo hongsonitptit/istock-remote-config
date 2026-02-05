@@ -7,10 +7,13 @@ from statistics import median
 import pandas as pd
 from typing import Tuple
 from vnstock import Vnstock
+import streamlit as st
 
 FIREANT_JWT_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6IkdYdExONzViZlZQakdvNERWdjV4QkRITHpnSSIsImtpZCI6IkdYdExONzViZlZQakdvNERWdjV4QkRITHpnSSJ9.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmZpcmVhbnQudm4iLCJhdWQiOiJodHRwczovL2FjY291bnRzLmZpcmVhbnQudm4vcmVzb3VyY2VzIiwiZXhwIjoxODg5NjIyNTMwLCJuYmYiOjE1ODk2MjI1MzAsImNsaWVudF9pZCI6ImZpcmVhbnQudHJhZGVzdGF0aW9uIiwic2NvcGUiOlsiYWNhZGVteS1yZWFkIiwiYWNhZGVteS13cml0ZSIsImFjY291bnRzLXJlYWQiLCJhY2NvdW50cy13cml0ZSIsImJsb2ctcmVhZCIsImNvbXBhbmllcy1yZWFkIiwiZmluYW5jZS1yZWFkIiwiaW5kaXZpZHVhbHMtcmVhZCIsImludmVzdG9wZWRpYS1yZWFkIiwib3JkZXJzLXJlYWQiLCJvcmRlcnMtd3JpdGUiLCJwb3N0cy1yZWFkIiwicG9zdHMtd3JpdGUiLCJzZWFyY2giLCJzeW1ib2xzLXJlYWQiLCJ1c2VyLWRhdGEtcmVhZCIsInVzZXItZGF0YS13cml0ZSIsInVzZXJzLXJlYWQiXSwianRpIjoiMjYxYTZhYWQ2MTQ5Njk1ZmJiYzcwODM5MjM0Njc1NWQifQ.dA5-HVzWv-BRfEiAd24uNBiBxASO-PAyWeWESovZm_hj4aXMAZA1-bWNZeXt88dqogo18AwpDQ-h6gefLPdZSFrG5umC1dVWaeYvUnGm62g4XS29fj6p01dhKNNqrsu5KrhnhdnKYVv9VdmbmqDfWR8wDgglk5cJFqalzq6dJWJInFQEPmUs9BW_Zs8tQDn-i5r4tYq2U8vCdqptXoM7YgPllXaPVDeccC9QNu2Xlp9WUvoROzoQXg25lFub1IYkTrM66gJ6t9fJRZToewCt495WNEOQFa_rwLCZ1QwzvL0iYkONHS_jZ0BOhBCdW9dWSawD6iF1SIQaFROvMDH1rg"
 
 
+
+@st.cache_data(ttl=60)
 def get_finance_history(symbol: str) -> pd.DataFrame:
     url = f"https://apiextaws.tcbs.com.vn/tcanalysis/v1/finance/{symbol.upper()}/financialratio?yearly=0&isAll=true"
 
@@ -38,6 +41,8 @@ def get_finance_history(symbol: str) -> pd.DataFrame:
 # logger.info(get_finance_history('FPT')['bookValuePerShare'])
 
 
+
+@st.cache_data(ttl=60)
 def get_list_similar_company(symbol: str) -> list:
     url = f"https://api2.simplize.vn/api/personalize/compare/list/{symbol}"
 
@@ -65,6 +70,8 @@ def get_list_similar_company(symbol: str) -> list:
         return []
 
 
+
+@st.cache_data(ttl=60)
 def get_avg_pe_pb_industry(symbol: str) -> dict:
     url = "https://api2.simplize.vn/api/company/view/fi-data"
 
@@ -102,6 +109,8 @@ def get_avg_pe_pb_industry(symbol: str) -> dict:
     }
 
 
+
+@st.cache_data(ttl=60)
 def get_dividend_payment_histories(symbol: str) -> list:
     try:
         url = "https://iq.vietcap.com.vn/api/iq-insight-service/v1/events"
@@ -147,6 +156,8 @@ def get_dividend_payment_histories(symbol: str) -> list:
         return []
 
 
+
+@st.cache_data(ttl=60)
 def get_trading_view_data(symbol: str, start: str, end: str) -> pd.DataFrame:
     try:
         url = f"https://trade.pinetree.vn/stockHis.pt?symbol={symbol}&from={start}&to={end}&page=1&pageSize=1000"
@@ -198,6 +209,8 @@ def get_trading_view_data(symbol: str, start: str, end: str) -> pd.DataFrame:
 # get_trading_view_data("PC1", "2024-01-01", "2024-12-31")
 
 
+
+@st.cache_data(ttl=60)
 def get_company_info(symbol: str) -> dict:
     try:
         url = f"https://trade.pinetree.vn/companyInfo.pt?symbol={symbol.upper()}"
@@ -246,6 +259,8 @@ def get_company_info(symbol: str) -> dict:
         }
 
 
+
+@st.cache_data(ttl=60)
 def get_stock_data_and_rsi(symbol: str, days: int = 30, rsi_period: int = 14):
     """
     Lấy dữ liệu giá cổ phiếu và tính RSI
@@ -297,6 +312,8 @@ def get_stock_data_and_rsi(symbol: str, days: int = 30, rsi_period: int = 14):
 # print(get_stock_data_and_rsi('FPT'))
 
 
+
+@st.cache_data(ttl=60)
 def get_foreigner_room(symbol: str, start_date: str, end_date: str) -> list:
     limit = 1000
     offset = 0
@@ -332,6 +349,8 @@ def get_foreigner_room(symbol: str, start_date: str, end_date: str) -> list:
 
 # get_foreigner_room('FPT', '2025-12-01', '2025-12-25')
 
+
+@st.cache_data(ttl=60)
 def get_last_doanh_thu_loi_nhuan_quy(symbol: str) -> list:
     url = f"https://apiextaws.tcbs.com.vn/tcanalysis/v1/finance/{symbol}/incomestatement?yearly=0&isAll=true"
 
@@ -400,6 +419,8 @@ def get_last_doanh_thu_loi_nhuan_quy(symbol: str) -> list:
     return doanh_thu_quy, lnst_quy
     
 
+
+@st.cache_data(ttl=60)
 def get_doanh_thu_loi_nhuan_quy(symbol: str, year: int) -> list:
     url = f"https://apiextaws.tcbs.com.vn/tcanalysis/v1/finance/{symbol}/incomestatement?yearly=0&isAll=true"
 
@@ -437,6 +458,8 @@ def get_doanh_thu_loi_nhuan_quy(symbol: str, year: int) -> list:
     return doanh_thu_quy, lnst_quy
 
 
+
+@st.cache_data(ttl=60)
 def get_doanh_thu_loi_nhuan_nam(symbol: str) -> list:
     url = f"https://apiextaws.tcbs.com.vn/tcanalysis/v1/finance/{symbol}/incomestatement?yearly=1&isAll=true"
 

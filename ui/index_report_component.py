@@ -119,6 +119,7 @@ def parse_eps_financial_data(df, source='TCBS'):
         
     return eps_map
 
+@st.cache_data(ttl=60)
 def calculate_valuation_history(symbol):
     logger.info(f"Bắt đầu tính toán P/E và P/B lịch sử 10 năm cho mã {symbol}...")
     
