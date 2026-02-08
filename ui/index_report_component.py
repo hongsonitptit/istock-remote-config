@@ -40,9 +40,9 @@ def get_previous_quarters(year, quarter, num_quarters=4):
             current_q -= 1
     return quarters
 
-def parse_eps_financial_data(df, source='TCBS'):
+def parse_eps_financial_data(df, source='KBS'):
     """
-    Chuyển đổi dữ liệu tài chính (từ TCBS hoặc VCI) về dạng chuẩn dictionary: {(year, quarter): eps_value}
+    Chuyển đổi dữ liệu tài chính (từ KBS hoặc VCI) về dạng chuẩn dictionary: {(year, quarter): eps_value}
     """
     eps_map = {}
     
@@ -93,7 +93,7 @@ def parse_eps_financial_data(df, source='TCBS'):
             else:
                  logger.warning("Không tìm thấy cột EPS trong dữ liệu VCI.")
 
-        else: # TCBS
+        else: # KBS
             eps_col = 'earning_per_share'
             if eps_col not in df.columns:
                 candidates = [c for c in df.columns if 'earn' in c.lower() or 'eps' in c.lower()]
@@ -126,21 +126,21 @@ def calculate_valuation_history(symbol):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=10*365)
     
-    # 1. Lấy dữ liệu GIÁ (Ưu tiên VCI)
+    # 1. Lấy dữ liệu GIÁ (Ưu tiên KBS)
     logger.info(f"- Đang tải dữ liệu giá từ {start_date.strftime('%Y-%m-%d')} đến {end_date.strftime('%Y-%m-%d')}...")
-    source_used = 'VCI'
+    source_used = 'KBS'
     try:
-        stock = Vnstock().stock(symbol=symbol, source='VCI')
+        stock = Vnstock().stock(symbol=symbol, source='KBS')
         df_price = stock.quote.history(start=start_date.strftime("%Y-%m-%d"), end=end_date.strftime("%Y-%m-%d"))
         
         if df_price is None or df_price.empty:
-            logger.info("VCI trả về rỗng, thử TCBS...")
-            stock = Vnstock().stock(symbol=symbol, source='TCBS')
+            logger.info("KBS trả về rỗng, thử VCI...")
+            stock = Vnstock().stock(symbol=symbol, source='VCI')
             df_price = stock.quote.history(start=start_date.strftime("%Y-%m-%d"), end=end_date.strftime("%Y-%m-%d"))
-            source_used = 'TCBS'
+            source_used = 'VCI'
 
         if df_price is None or df_price.empty:
-            logger.error("Không thể lấy dữ liệu giá từ cả VCI và TCBS.")
+            logger.error("Không thể lấy dữ liệu giá từ cả KBS và VCI.")
             return None, None
 
         df_price['time'] = pd.to_datetime(df_price['time'])
@@ -157,25 +157,25 @@ def calculate_valuation_history(symbol):
     bvps_map = {}
     
     try:
-        logger.info("  -> Thử nguồn VCI...")
-        stock_vci = Vnstock().stock(symbol=symbol, source='VCI')
-        df_ratio_vci = stock_vci.finance.ratio(period='quarter', dropna=False, lang='vi')
-        eps_map = parse_eps_financial_data(df_ratio_vci, source='VCI')
-        bvps_map = parse_bvps_financial_data(df_ratio_vci, source='VCI')
+        logger.info("  -> Thử nguồn KBS...")
+        stock_kbs = Vnstock().stock(symbol=symbol, source='KBS')
+        df_ratio_kbs = stock_kbs.finance.ratio(period='quarter', dropna=False)
+        eps_map = parse_eps_financial_data(df_ratio_kbs, source='KBS')
+        bvps_map = parse_bvps_financial_data(df_ratio_kbs, source='KBS')
     except Exception as e:
-        logger.error(f"  -> VCI lỗi: {e}")
+        logger.error(f"  -> KBS lỗi: {e}")
     
     if not eps_map or not bvps_map:
         try:
-            logger.info("  -> Thử nguồn TCBS...")
-            stock_tcbs = Vnstock().stock(symbol=symbol, source='TCBS')
-            df_ratio_tcbs = stock_tcbs.finance.ratio(period='quarter', dropna=False)
+            logger.info("  -> Thử nguồn VCI...")
+            stock_vci = Vnstock().stock(symbol=symbol, source='VCI')
+            df_ratio_vci = stock_vci.finance.ratio(period='quarter', dropna=False, lang='vi')
             if not eps_map:
-                eps_map = parse_eps_financial_data(df_ratio_tcbs, source='TCBS')
+                eps_map = parse_eps_financial_data(df_ratio_vci, source='VCI')
             if not bvps_map:
-                bvps_map = parse_bvps_financial_data(df_ratio_tcbs, source='TCBS')
+                bvps_map = parse_bvps_financial_data(df_ratio_vci, source='VCI')
         except Exception as e:
-             logger.error(f"  -> TCBS lỗi: {e}")
+             logger.error(f"  -> VCI lỗi: {e}")
 
     if not eps_map and not bvps_map:
         logger.error("Không thể lấy dữ liệu EPS và BVPS từ bất kỳ nguồn nào.")
@@ -240,9 +240,9 @@ def calculate_valuation_history(symbol):
     return pe_df, pb_df
 
 
-def parse_bvps_financial_data(df, source='TCBS'):
+def parse_bvps_financial_data(df, source='KBS'):
     """
-    Chuyển đổi dữ liệu tài chính (từ TCBS hoặc VCI) về dạng chuẩn dictionary: {(year, quarter): bvps_value}
+    Chuyển đổi dữ liệu tài chính (từ KBS hoặc VCI) về dạng chuẩn dictionary: {(year, quarter): bvps_value}
     """
     bvps_map = {}
     
@@ -290,9 +290,9 @@ def parse_bvps_financial_data(df, source='TCBS'):
             else:
                  logger.warning("Không tìm thấy cột BVPS trong dữ liệu VCI.")
 
-        else: # TCBS
-            bvps_col = 'book_value_per_share' # Tên dự đoán, cần kiểm tra nếu code chạy thực tế với TCBS
-            # Thông thường TCBS cột là 'price_to_book' hoặc 'book_value_per_share', trong ratio
+        else: # KBS
+            bvps_col = 'book_value_per_share' # Tên dự đoán, cần kiểm tra nếu code chạy thực tế với KBS
+            # Thông thường KBS cột là 'price_to_book' hoặc 'book_value_per_share', trong ratio
             # Nếu không tìm thấy chính xác, thử tìm
             if bvps_col not in df.columns:
                 candidates = [c for c in df.columns if 'book' in c.lower() or 'bvps' in c.lower()]

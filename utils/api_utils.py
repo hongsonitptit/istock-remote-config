@@ -286,12 +286,12 @@ def get_stock_data_and_rsi(symbol: str, days: int = 30, rsi_period: int = 14):
         f"📊 Đang lấy dữ liệu cổ phiếu {symbol} từ {start_str} đến {end_str}...")
 
     # Khởi tạo Vnstock và lấy dữ liệu
-    # Thử TCBS trước, nếu lỗi thì dùng VCI
+    # Thử KBS trước, nếu lỗi thì dùng VCI
     try:
-        stock = Vnstock().stock(symbol=symbol, source='TCBS')
+        stock = Vnstock().stock(symbol=symbol, source='KBS')
         df = stock.quote.history(start=start_str, end=end_str, interval='1D')
     except Exception as e:
-        logger.warning(f"⚠️  TCBS khong ho tro ma {symbol}, thu dung VCI...")
+        logger.warning(f"⚠️  KBS khong ho tro ma {symbol}, thu dung VCI...")
         stock = Vnstock().stock(symbol=symbol, source='VCI')
         df = stock.quote.history(start=start_str, end=end_str, interval='1D')
 

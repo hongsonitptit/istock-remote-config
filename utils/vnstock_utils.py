@@ -42,8 +42,11 @@ def get_pe_pb_history(symbol: str, recent_years: int = 10):
         Trả về None nếu có lỗi
     """
     try:
-        stock = Vnstock().stock(symbol=symbol, source='VCI')
-        # stock = Vnstock().stock(symbol=symbol, source='TCBS')
+        try:
+            stock = Vnstock().stock(symbol=symbol, source='KBS')
+        except Exception as e:
+            logger.warning(f"⚠️  KBS lỗi hoặc không hỗ trợ mã {symbol}, thử dùng VCI: {e}")
+            stock = Vnstock().stock(symbol=symbol, source='VCI')
 
         # Lấy dữ liệu chỉ số tài chính theo quý
         logger.info(
@@ -139,7 +142,11 @@ def get_pe_pb_history(symbol: str, recent_years: int = 10):
 @st.cache_data(ttl=60)
 def get_company_info(symbol: str) -> dict:
     try:
-        stock = Vnstock().stock(symbol=symbol, source='VCI')
+        try:
+            stock = Vnstock().stock(symbol=symbol, source='KBS')
+        except Exception as e:
+            logger.warning(f"⚠️  KBS lỗi hoặc không hỗ trợ mã {symbol}, thử dùng VCI: {e}")
+            stock = Vnstock().stock(symbol=symbol, source='VCI')
         company_info = stock.company.overview()
         info = company_info.iloc[0]
         industry_list = list(set([info[col] for col in company_info.columns.tolist() if col.startswith('icb_')]))
@@ -250,12 +257,12 @@ def get_list_rsi_14(symbol: str, days: int = 30, rsi_period: int = 14):
     logger.info(f"📊 Đang lấy dữ liệu cổ phiếu {symbol} từ {start_str} đến {end_str}...")
     
     # Khởi tạo Vnstock và lấy dữ liệu
-    # Thử TCBS trước, nếu lỗi thì dùng VCI
+    # Thử KBS trước, nếu lỗi thì dùng VCI
     try:
-        stock = Vnstock().stock(symbol=symbol, source='TCBS')
+        stock = Vnstock().stock(symbol=symbol, source='KBS')
         df = stock.quote.history(start=start_str, end=end_str, interval='1D')
     except Exception as e:
-        logger.warning(f"⚠️  TCBS khong ho tro ma {symbol}, thu dung VCI...")
+        logger.warning(f"⚠️  KBS khong ho tro ma {symbol}, thu dung VCI...")
         stock = Vnstock().stock(symbol=symbol, source='VCI')
         df = stock.quote.history(start=start_str, end=end_str, interval='1D')
     
